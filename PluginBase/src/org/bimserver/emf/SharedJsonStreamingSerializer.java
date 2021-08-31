@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.codec.binary.Base64;
@@ -289,8 +290,69 @@ public class SharedJsonStreamingSerializer implements StreamingReader {
 					}
 				}
 			}
+			
+			writeAdditionalData(object);
+			
 			print("}\n");
 //		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Include HashMapVirtualObject.additionalData in the current JSON Object
+	 * @param object
+	 * @throws IOException
+	 */
+	@SuppressWarnings("unchecked")
+	private void writeAdditionalData(HashMapVirtualObject object) throws IOException {
+		if(object.hasAdditionalData() == false) {
+			return;
+		}
+		
+		print(",\"additionalData\": {");
+		
+		HashMap<String, Object> additionalData = object.getAdditionalData();
+		
+		boolean bFirstAdditionalValue = true;
+		
+		for(String strAdditionalDataKey : additionalData.keySet()) {
+			Object additonalDataValue = additionalData.get(strAdditionalDataKey);
+			
+			if(bFirstAdditionalValue == false) {
+				print(",");
+			} else {
+				bFirstAdditionalValue = false;
+			}
+			
+			if(additonalDataValue instanceof String) {
+				print("\"" + strAdditionalDataKey + "\": \"" + additonalDataValue + "\"");
+			} else if (additonalDataValue instanceof HashMap) {
+				HashMap<String, ?> map =  (HashMap<String, ?>) additonalDataValue;
+				
+				print("\"" + strAdditionalDataKey + "\": {\n");
+				
+				boolean bFirst = true;
+				
+				for(String strCurrentKey : map.keySet()) {
+					Object currentValue = map.get(strCurrentKey);
+					
+					String strValue = currentValue.toString().replace("\"", "\\\"");
+					
+					if(bFirst == false) {
+						print(",");
+					} else {
+						bFirst = false;
+					}
+					
+					print("\"" + strCurrentKey + "\": \"" + strValue + "\"\n");
+				}
+				
+				print("}");
+			}
+		}
+		
+		print("}");
 	}
 
 	private void write(MinimalVirtualObject object) throws IOException {

@@ -723,6 +723,15 @@ public class JsonQueryObjectModelConverter {
 				throw new QueryException("\"properties\" must be of type object");
 			}
 		}
+		if(objectNode.has("includeProperties")) {
+			JsonNode includePropertiesNode = objectNode.get("includeProperties");
+			if(includePropertiesNode instanceof ObjectNode) {
+				ObjectNode includeProperties = (ObjectNode) includePropertiesNode;
+				parseInlcudeProperties(queryPart, includeProperties);
+			} else {
+				throw new QueryException("\"includeProperties\" must be of type object");
+			}
+		}
 		if (objectNode.has("classifications")) {
 			JsonNode classificationsNode = (JsonNode) objectNode.get("classifications");
 			if (classificationsNode instanceof ArrayNode) {
@@ -827,7 +836,7 @@ public class JsonQueryObjectModelConverter {
 		Iterator<String> fieldNames = objectNode.fieldNames();
 		while (fieldNames.hasNext()) {
 			String fieldName = fieldNames.next();
-			if (fieldName.equals("includeAllFields") || fieldName.equals("type") || fieldName.equals("types") || fieldName.equals("oid") || fieldName.equals("oids") || fieldName.equals("guid") || fieldName.equals("guids") || fieldName.equals("name") || fieldName.equals("names") || fieldName.equals("properties") || fieldName.equals("inBoundingBox") || fieldName.equals("include") || fieldName.equals("includes") || fieldName.equalsIgnoreCase("includeAllSubtypes") || fieldName.equals("classifications") || fieldName.equals("doublebuffer") || fieldName.equals("version")  || fieldName.equals("loaderSettings") || fieldName.equals("tiles") || fieldName.equals("reuseLowerThreshold") || fieldName.contentEquals("specialQueryType")) {
+			if (fieldName.equals("includeAllFields") || fieldName.equals("type") || fieldName.equals("types") || fieldName.equals("oid") || fieldName.equals("oids") || fieldName.equals("guid") || fieldName.equals("guids") || fieldName.equals("name") || fieldName.equals("names") || fieldName.equals("properties") || fieldName.equals("inBoundingBox") || fieldName.equals("include") || fieldName.equals("includes") || fieldName.equalsIgnoreCase("includeAllSubtypes") || fieldName.equals("classifications") || fieldName.equals("doublebuffer") || fieldName.equals("version")  || fieldName.equals("loaderSettings") || fieldName.equals("tiles") || fieldName.equals("reuseLowerThreshold") || fieldName.contentEquals("specialQueryType") || fieldName.contentEquals("includeProperties")) {
 				// fine
 			} else {
 				throw new QueryException("Unknown field: \"" + fieldName + "\"");
@@ -866,6 +875,36 @@ public class JsonQueryObjectModelConverter {
 				}				
 			} else {
 				throw new QueryException("Query language has changed, propertyset name required now");
+			}
+		}
+	}
+	
+	/**
+	 * Added by WWB
+	 * 
+	 * Parses additional properties to be included in the returned JSON objects
+	 * @param queryPart
+	 * @param includeProperties
+	 * @throws QueryException
+	 */
+	private void parseInlcudeProperties(QueryPart queryPart, ObjectNode includeProperties) throws QueryException {
+		Iterator<Entry<String, JsonNode>> fields = includeProperties.fields();
+		while (fields.hasNext()) {
+			Entry<String, JsonNode> entry = fields.next();
+			String propertySetName = entry.getKey();
+			JsonNode value = entry.getValue();
+			if (value.getNodeType() != JsonNodeType.ARRAY) {
+				throw new QueryException("propertyset \"" + entry.getKey() + "\" type not supported");
+			}
+			
+			ArrayNode properties = (ArrayNode) value;
+			for (int i = 0; i < properties.size(); i++) {
+				JsonNode propertyNode = properties.get(i);
+
+				if (propertyNode.getNodeType() != JsonNodeType.STRING) {
+					throw new QueryException("property for propertyset \"" + entry.getKey() + "\" type not supported");
+				}
+				queryPart.addIncludeProperty(propertySetName, propertyNode.asText());
 			}
 		}
 	}
