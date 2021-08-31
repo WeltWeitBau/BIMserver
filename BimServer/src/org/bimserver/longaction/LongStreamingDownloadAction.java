@@ -38,6 +38,7 @@ import java.nio.file.Path;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.activation.DataHandler;
@@ -172,6 +173,9 @@ public class LongStreamingDownloadAction extends LongAction<StreamingDownloadKey
 					if (query.isDoubleBuffer()) {
 						Query newQuery = new Query(packageMetaData);
 						QueryPart newQueryPart = newQuery.createQueryPart();
+						
+						passOnQueryPartData(query, newQueryPart);
+						
 						QueryObjectProvider queryObjectProvider = new QueryObjectProvider(databaseSession, getBimServer(), query, roids, packageMetaData);
 						HashMapVirtualObject next = queryObjectProvider.next();
 						while (next != null) {
@@ -204,6 +208,35 @@ public class LongStreamingDownloadAction extends LongAction<StreamingDownloadKey
 		} catch (Throwable e) {
 			LOGGER.error("", e);
 			error(e);
+		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Pass on Query parameters, that are supposed to be applied to includes too
+	 * @param oldQuery
+	 * @param newQueryPart
+	 */
+	private void passOnQueryPartData(Query oldQuery, QueryPart newQueryPart) {
+		if(oldQuery.getQueryParts() == null || oldQuery.getQueryParts().isEmpty()) {
+			return;
+		}
+		
+		for(QueryPart oldQueryPart : oldQuery.getQueryParts()) {
+			if(oldQueryPart.hasIncludeProperties() == false) {
+				continue;
+			}
+			
+			Map<String, Set<String>> includeProperties = oldQueryPart.getIncludeProperties();
+			
+			for(String strPropertySet : includeProperties.keySet()) {
+				Set<String> properties = includeProperties.get(strPropertySet);
+				
+				for(String strProperty : properties) {
+					newQueryPart.addIncludeProperty(strPropertySet, strProperty);
+				}
+			}
 		}
 	}
 

@@ -56,6 +56,12 @@ public class HashMapVirtualObject extends AbstractHashMapVirtualObject implement
 	private HashMap<EReference, AbstractHashMapVirtualObject> directReferences;
 	private HashMap<EReference, Set<HashMapVirtualObject>> directListReferences;
 	
+	/**
+	 * Added by WWB
+	 * Contains additional data, that is not part of eClass
+	 */
+	private HashMap<String, Object> additionalData;
+
 	public HashMapVirtualObject(QueryContext reusable, EClass eClass) {
 		this.reusable = reusable;
 		this.eClass = eClass;
@@ -650,5 +656,21 @@ public class HashMapVirtualObject extends AbstractHashMapVirtualObject implement
 	public void addReference(EReference eReference, EClass eClassForOid, long referencedOid) {
 		List<Long> list = getOrCreateList(eReference, 0);
 		list.add(referencedOid);
+	}
+	
+	public boolean hasAdditionalData() {
+		return additionalData != null;
+	}
+	
+	public void putAdditionalData(String strKey, Object value) {
+		if (additionalData == null) {
+			additionalData = new HashMap<String, Object>();
+		}
+		
+		additionalData.put(strKey, value);
+	}
+	
+	public HashMap<String, Object> getAdditionalData() {
+		return additionalData;
 	}
 }

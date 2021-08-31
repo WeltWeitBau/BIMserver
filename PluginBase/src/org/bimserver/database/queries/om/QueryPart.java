@@ -45,6 +45,13 @@ public class QueryPart extends PartOfQuery implements CanInclude {
 	private int minimumReuseThreshold = -1;
 	private Set<String> includesToResolve;
 	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Additional properties, to be included in the results
+	 */
+	private Map<String, Set<String>> includeProperties;
+	
 	public QueryPart(PackageMetaData packageMetaData) {
 		this.packageMetaData = packageMetaData;
 	}
@@ -295,5 +302,31 @@ public class QueryPart extends PartOfQuery implements CanInclude {
 	
 	public boolean hasIncludesToResolve() {
 		return includesToResolve != null;
+	}
+	
+	public boolean hasIncludeProperties() {
+		return includeProperties != null;
+	}
+	
+	public void addIncludeProperty(String strPropertySet, String strPropertyName) {
+		if(includeProperties == null) {
+			includeProperties = new HashMap<String, Set<String>>();
+		}
+		
+		Set<String> properties = includeProperties.get(strPropertySet);
+		if(properties == null) {
+			properties = new HashSet<String>();
+			includeProperties.put(strPropertySet, properties);
+		}
+		
+		properties.add(strPropertyName);
+	}
+	
+	public void setIncludeProperties(Map<String, Set<String>> includeProperties) {
+		this.includeProperties = includeProperties;
+	}
+	
+	public Map<String, Set<String>> getIncludeProperties() {
+		return includeProperties;
 	}
 }
