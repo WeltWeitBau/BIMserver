@@ -22,10 +22,14 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.BimserverDatabaseException;
 import org.bimserver.database.DatabaseSession.GetResult;
+import org.bimserver.database.DatabaseSession;
 import org.bimserver.database.Record;
 import org.bimserver.database.SearchingRecordIterator;
 import org.bimserver.database.queries.om.CanInclude;
@@ -39,6 +43,7 @@ import org.bimserver.shared.HashMapVirtualObject;
 import org.bimserver.shared.HashMapWrappedVirtualObject;
 import org.bimserver.shared.QueryContext;
 import org.bimserver.utils.BinUtils;
+import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
@@ -282,6 +287,15 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 					throw new BimserverDatabaseException("Reading " + eClass.getName() + "." + feature.getName(), e);
 				}
 			}
+			
+			if (getQueryPart().hasIncludeProperties()) {
+				try {
+					includeProperties(idEObject);
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+			
 			return idEObject;
 		} catch (BufferUnderflowException e) {
 			throw new BimserverDatabaseException("Reading " + eClass.getName(), e);
@@ -528,6 +542,117 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			}
 		} finally {
 			recordIterator.close();
+		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Includes additional properties to the current HashMapVirtualObject.
+	 * @throws BimserverDatabaseException
+	 */
+	@SuppressWarnings("unchecked")
+	private void includeProperties(HashMapVirtualObject object) throws BimserverDatabaseException {
+		if(object == null) {
+			return;
+		}
+		
+		if(object.has("includedProperties")) {
+			return;
+		}
+		
+		DatabaseSession databaseSession = getQueryObjectProvider().getDatabaseSession();
+		List<Long> isDefinedByOids = (List<Long>) object.get("IsDefinedBy");
+		
+		if (isDefinedByOids == null) {
+			return;
+		}
+		
+		HashMap<String, String> includedProperties = new HashMap<String, String>();
+
+		for (Long definedByOid : isDefinedByOids) {
+			EClass eClass = databaseSession.getEClassForOid(definedByOid);
+			if (getPackageMetaData().getEClass("IfcRelDefinesByProperties").isSuperTypeOf(eClass)) {
+				HashMapVirtualObject ifcRelDefinesByProperties = getByOid(definedByOid);
+				Long ifcPropertySetDefinition = (Long) ifcRelDefinesByProperties.get("RelatingPropertyDefinition");
+				processPropertySet(databaseSession, includedProperties, ifcPropertySetDefinition);
+			} else if (getPackageMetaData().getEClass("IfcRelDefinesByType").isSuperTypeOf(eClass)) {
+				HashMapVirtualObject ifcRelDefinesByType = getByOid(definedByOid);
+				Long relatingTypeId = (Long) ifcRelDefinesByType.get("RelatingType");
+				EClass eClassForOid = databaseSession.getEClassForOid(relatingTypeId);
+				if (getPackageMetaData().getEClass("IfcTypeObject").isSuperTypeOf(eClassForOid)) {
+					HashMapVirtualObject ifcTypeObject = getByOid(relatingTypeId);
+					List<Long> propertySets = (List<Long>) ifcTypeObject.get("HasPropertySets");
+					if (propertySets != null) {
+						for (Long propertySetId : propertySets) {
+							processPropertySet(databaseSession, includedProperties, propertySetId);
+						}
+					}
+				}
+			} else {
+				LOGGER.info(eClass.getName());
+			}
+		}
+		
+		if(includedProperties.isEmpty() == false) {
+			object.putAdditionalData("includedProperties", includedProperties);
+		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Searches a PropertySet for properties to be included in the current HashMapVirtualObject
+	 * @param databaseSession
+	 * @param includedProperties
+	 * @param ifcPropertySetDefinition
+	 * @throws BimserverDatabaseException
+	 */
+	@SuppressWarnings("unchecked")
+	private void processPropertySet(DatabaseSession databaseSession, HashMap<String, String> includedProperties, Long ifcPropertySetDefinition) throws BimserverDatabaseException {
+		Map<String, Set<String>> includeProperties = getQueryPart().getIncludeProperties();
+		
+		Set<String> propertiesToIncludeAll = includeProperties.get("ALL");
+		
+		EClass eClassForOid = databaseSession.getEClassForOid(ifcPropertySetDefinition);
+		if (getPackageMetaData().getEClass("IfcPropertySet").isSuperTypeOf(eClassForOid)) {
+			HashMapVirtualObject ifcPropertySet = getByOid(ifcPropertySetDefinition);
+			String propertySetName = (String) ifcPropertySet.get("Name");
+			
+			Set<String> propertiesToInclude = includeProperties.get(propertySetName);
+			
+			if(propertiesToInclude == null && propertiesToIncludeAll == null) {
+				return;
+			} else if(propertiesToInclude == null) {
+				propertiesToInclude = propertiesToIncludeAll;
+			}
+			
+			List<Long> properties = (List<Long>) ifcPropertySet.get("HasProperties");
+			for (long propertyOid : properties) {
+				if (getPackageMetaData().getEClass("IfcPropertySingleValue").isSuperTypeOf(databaseSession.getEClassForOid(propertyOid)) == false) {
+					continue;
+				}
+				HashMapVirtualObject property = getByOid(propertyOid);
+				String name = (String) property.get("Name");
+
+				if (propertiesToInclude.contains(name) == false) {
+					continue;
+				}
+
+				HashMapWrappedVirtualObject value = (HashMapWrappedVirtualObject) property.get("NominalValue");
+				
+				if(value == null) {
+					continue;
+				}
+
+				Object wrappedValue = value.eGet(value.eClass().getEStructuralFeature("wrappedValue"));
+				if (value.eClass().getName().equals("IfcBoolean")) {
+					Enumerator tristate = (Enumerator) wrappedValue;
+					includedProperties.put(name, tristate.getName().toLowerCase());
+				} else {
+					includedProperties.put(name, wrappedValue.toString());
+				}
+			}
 		}
 	}
 }
