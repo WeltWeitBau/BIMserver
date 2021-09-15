@@ -1678,6 +1678,11 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 	public SUser getUserByUserName(String username) throws ServerException, UserException {
 		requireRealUserAuthentication();
 		DatabaseSession session = getBimServer().getDatabase().createSession();
+		
+		if(isUserAccessable(username) == false) {
+			throw new UserException("Admin rights required to list users");
+		}
+		
 		try {
 			BimDatabaseAction<User> action = new GetUserByUserNameDatabaseAction(session, getInternalAccessMethod(), username);
 			SUser convert = getBimServer().getSConverter().convertToSObject(session.executeAndCommitAction(action));
@@ -1865,6 +1870,11 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 	public SUser getUserByUoid(Long uoid) throws ServerException, UserException {
 		requireAuthentication();
 		DatabaseSession session = getBimServer().getDatabase().createSession();
+		
+		if(isUserAccessable(uoid) == false) {
+			throw new UserException("Admin rights required to see user");
+		}
+
 		try {
 			GetUserByUoidDatabaseAction action = new GetUserByUoidDatabaseAction(session, getInternalAccessMethod(), uoid);
 			return getBimServer().getSConverter().convertToSObject(session.executeAndCommitAction(action));
@@ -1873,6 +1883,34 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 		} finally {
 			session.close();
 		}
+	}
+	
+	private boolean isUserAccessable(String strUsername) throws ServerException, UserException {
+		return isUserAccessable(-1, strUsername);
+	}
+	
+	private boolean isUserAccessable(long uoid) throws ServerException, UserException {
+		return isUserAccessable(uoid, null);
+	}
+	
+	private boolean isUserAccessable(long uoid, String strUsername) throws ServerException, UserException {
+		if (getBimServer().getServerSettingsCache().getServerSettings().getHideUserListForNonAdmin() == false) {
+			return true;
+		}
+		
+		if (getCurrentUser() != null & getCurrentUser().getUserType() == SUserType.ADMIN) {
+			return true;
+		}
+		
+		if(uoid > -1 && getCurrentUser().getOid() == uoid) {
+			return true;
+		}
+		
+		if(strUsername != null && strUsername.equals(getCurrentUser().getUsername())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 	public List<SUser> getAllNonAuthorizedUsersOfProject(Long poid) throws ServerException, UserException {
