@@ -4,9 +4,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>bimserverclientlib</artifactId>
 	<parent>
-		<groupId>org.opensourcebim</groupId>
+		<groupId>de.weltweitbau</groupId>
 		<artifactId>parent</artifactId>
-		<version>1.5.182</version>
+		<version>0.0.0</version>
 	</parent>
 	<properties>
 		<jetty.version>9.4.19.v20190610</jetty.version>
@@ -46,7 +46,7 @@
 			<version>${cxf.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.opensourcebim</groupId>
+			<groupId>de.weltweitbau</groupId>
 			<artifactId>shared</artifactId>
 			<version>${project.version}</version>
 		</dependency>

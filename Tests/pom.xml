@@ -2,9 +2,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>tests</artifactId>
 	<parent>
-		<groupId>org.opensourcebim</groupId>
+		<groupId>de.weltweitbau</groupId>
 		<artifactId>parent</artifactId>
-		<version>1.5.182</version>
+		<version>0.0.0</version>
 	</parent>
 	<build>
 		<sourceDirectory>src</sourceDirectory>
@@ -43,9 +43,9 @@
 			<version>20140925</version>
 		</dependency>
 		<dependency>
-			<groupId>org.opensourcebim</groupId>
+			<groupId>de.weltweitbau</groupId>
 			<artifactId>bimserverjar</artifactId>
-			<version>1.5.182</version>
+			<version>0.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
