@@ -5,9 +5,9 @@
 	<artifactId>bimserverwar</artifactId>
 	<packaging>war</packaging>
 	<parent>
-		<groupId>org.opensourcebim</groupId>
+		<groupId>de.weltweitbau</groupId>
 		<artifactId>parent</artifactId>
-		<version>1.5.138</version>
+		<version>0.0.0</version>
 	</parent>
 	<build>
 		<sourceDirectory>src</sourceDirectory>
@@ -85,9 +85,9 @@
 	</build>
 	<dependencies>
 		<dependency>
-			<groupId>org.opensourcebim</groupId>
+			<groupId>de.weltweitbau</groupId>
 			<artifactId>bimserver</artifactId>
-			<version>1.5.138</version>
+			<version>0.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
