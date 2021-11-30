@@ -148,7 +148,7 @@ def downloadPatch(newVersion):
     currentPath = pathlib.Path(__file__).parent.resolve()
     versionName = newVersion['name']
 
-    localFilePath = pathlib.Path(str(currentPath) + '\\patch_' + versionName + '.zip')
+    localFilePath = pathlib.Path(str(currentPath) + '\\patch_' + versionName + '-138.zip')
     if localFilePath.is_file():
         return localFilePath
 
@@ -169,7 +169,7 @@ def getDownloadUrl(newVersion):
     assets = newVersion['assets']
     for asset in assets:
         downloadUrl = asset['browser_download_url']
-        if downloadUrl.endswith('.war'):
+        if downloadUrl.endswith('-138.zip'):
             return downloadUrl
 
 def reporthook(count, block_size, total_size):
@@ -289,6 +289,7 @@ class VersionName:
     patch = 0
 
     def __init__(self, versionAsString):
+        versionAsString.replace("", "-138")
         versionAsArray = versionAsString.replace('v', '').split('.')
         self.major = int(versionAsArray[0])
         self.minor = int(versionAsArray[1])
