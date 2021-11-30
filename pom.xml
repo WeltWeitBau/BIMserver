@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.weltweitbau</groupId>
 	<artifactId>parent</artifactId>
-	<version>0.0.0</version>
+	<version>1.0.0</version>
 	<packaging>pom</packaging>
 	<description>This is the parent pom, no idea why this is being released</description>
 	<properties>
@@ -24,7 +24,7 @@
 		<url>https://github.com/WeltWeitBau/BIMserver.git</url>
 		<connection>scm:git:https://github.com/WeltWeitBau/BIMserver.git</connection>
 		<developerConnection>scm:git:https://github.com/WeltWeitBau/BIMserver.git</developerConnection>
-		<tag>v0.0.0</tag>
+		<tag>v1.0.0</tag>
 	</scm>
 	<organization>
 		<name>OpenSource BIM</name>
