@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class WaitingListVirtualObject {
 	private static final Logger LOGGER = LoggerFactory.getLogger(WaitingListVirtualObject.class);
 	private final Map<Long, List<WaitingVirtualObject>> waitingObjects = new HashMap<>();
+	private final Map<Long, String> errors = new HashMap<Long, String>();
 
 	// TODO this seems to only be used for debugging/error checking, make optional
 	private final Map<Long, OpenConnectionCounter> openConnections = new HashMap<>();
@@ -128,14 +129,54 @@ public class WaitingListVirtualObject {
 			}
 		}
 		if (size() > 0) {
+			boolean allGood = true;
+			
 			for (Entry<Long, List<WaitingVirtualObject>> entry : waitingObjects.entrySet()) {
 				StringBuilder sb = new StringBuilder("" + entry.getKey() + " ");
 				for (WaitingVirtualObject waitingObject : entry.getValue()) {
-					sb.append(waitingObject.toString() + " ");
+					if(handleRefMissing(waitingObject, entry.getKey())) {
+						continue;
+					}
+					
+					allGood = false;
+					sb.append(waitingObject.toString() + "\n");
 				}
+				
 				LOGGER.info(sb.toString());
 			}
-			throw new DeserializeException(DeserializerErrorCode.NON_EXISTING_ENTITY_REFERENCED, "Waitinglist not empty, this usually means some objects were referred, but not included in the model");
+			
+			if(allGood == false) {
+				throw new DeserializeException(DeserializerErrorCode.NON_EXISTING_ENTITY_REFERENCED, "Waitinglist not empty, this usually means some objects were referred, but not included in the model");
+			}
 		}
+	}
+	
+	private boolean handleRefMissing(WaitingVirtualObject waitingObject, long expressId) {
+		if(waitingObject.getStructuralFeature().isRequired() == false) {
+			try {
+				waitingObject.getObject().eUnset(waitingObject.getStructuralFeature());
+				
+				writeErrorLog(waitingObject, expressId);
+				
+				return true;
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage());
+			}
+		}
+		
+		return false;
+	}
+	
+	private void writeErrorLog(WaitingVirtualObject waitingObject, long expressId) {
+		StringBuilder message = new StringBuilder(255);
+		
+		message.append(waitingObject.getObject().eClass().getName()).append(" has missing reference on Attribute '")
+			.append(waitingObject.getStructuralFeature().getName()).append("': #").append(expressId);
+		
+		errors.put(waitingObject.getExpressId(), message.toString());
+	}
+	
+	public Map<Long, String> getErrors() {
+		return errors;
 	}
 }

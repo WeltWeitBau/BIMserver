@@ -81,6 +81,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
 
+import de.weiltweitbau.deserializers.WwbIfcStepStreamingDeserializer;
+
 public class StreamingCheckinDatabaseAction extends GenericCheckinDatabaseAction {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(StreamingCheckinDatabaseAction.class);
@@ -247,6 +249,8 @@ public class StreamingCheckinDatabaseAction extends GenericCheckinDatabaseAction
 				generateDensityAndBounds(result, generateGeometry, concreteRevision);
 			}
 			
+			addSkippedRecords(report, deserializer);
+			
 			final GeometryGenerationReport finalReport = report;
 			
 //			float[] quantizationMatrix = createQuantizationMatrixFromBounds(newRevision.getBoundsMm());
@@ -412,6 +416,19 @@ public class StreamingCheckinDatabaseAction extends GenericCheckinDatabaseAction
 			throw new UserException("[" + fileName + "] " + e.getMessage(), e);
 		}
 		return concreteRevision;
+	}
+	
+	private void addSkippedRecords(GeometryGenerationReport report, StreamingDeserializer deserializer) {
+		if(deserializer instanceof WwbIfcStepStreamingDeserializer == false) {
+			return;
+		}
+		
+		WwbIfcStepStreamingDeserializer wwbDeserializer = (WwbIfcStepStreamingDeserializer) deserializer;
+		
+		Map<Long, String> errors = wwbDeserializer.getErrors();
+		for(long expressId : errors.keySet()) {
+			report.addFaultyRecord(expressId, errors.get(expressId));
+		}
 	}
 
 	private String fullname(EClass eClass) {

@@ -46,6 +46,8 @@ public class WaitingVirtualObject {
 	private final EStructuralFeature structuralFeature;
 
 	private long lineNumber;
+	
+	private long expressId = -1;
 
 	private int bufferPosition = -1;
 	
@@ -54,6 +56,14 @@ public class WaitingVirtualObject {
 		this.object = object;
 		this.structuralFeature = structuralFeature;
 		this.bufferPosition = bufferPosition;
+	}
+	
+	public void setExpressId(long value) {
+		expressId = value;
+	}
+	
+	public long getExpressId() {
+		return expressId;
 	}
 
 	public long getOid() {

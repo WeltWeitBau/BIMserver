@@ -169,6 +169,7 @@ import org.bimserver.emf.Schema;
 import org.bimserver.geometry.accellerator.Node;
 import org.bimserver.geometry.accellerator.NodeCounter;
 import org.bimserver.geometry.accellerator.Octree;
+import org.bimserver.ifc.step.deserializer.Ifc2x3tc1StepStreamingDeserializerPlugin;
 import org.bimserver.interfaces.objects.SAccessMethod;
 import org.bimserver.interfaces.objects.SAction;
 import org.bimserver.interfaces.objects.SBounds;
@@ -302,6 +303,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
+
+import de.weiltweitbau.deserializers.WwbIfcStepStreamingDeserializerPlugin;
 
 public class ServiceImpl extends GenericServiceImpl implements ServiceInterface {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ServiceImpl.class);
@@ -1207,6 +1210,9 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 					return (SLongCheckinActionState) getBimServer().getSConverter().convertToSObject(progressTopic.getLastProgress());
 				} else if (plugin instanceof StreamingDeserializerPlugin) {
 					StreamingDeserializerPlugin streaminDeserializerPlugin = (StreamingDeserializerPlugin) plugin;
+					
+					streaminDeserializerPlugin = getWwbStreamingDeserializerIfDisabled(streaminDeserializerPlugin);
+					
 					StreamingDeserializer streamingDeserializer = streaminDeserializerPlugin.createDeserializer(getBimServer().getPluginSettingsCache().getPluginSettings(deserializerPluginConfiguration.getOid()));
 					streamingDeserializer.init(getBimServer().getDatabase().getMetaDataManager().getPackageMetaData(project.getSchema()));
 					RestartableInputStream restartableInputStream = new RestartableInputStream(originalInputStream, file);
@@ -1232,6 +1238,14 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 				throw new UserException("No (enabled) (streaming) deserializer found with oid " + deserializerOid);
 			}
 		}
+	}
+	
+	private StreamingDeserializerPlugin getWwbStreamingDeserializerIfDisabled(StreamingDeserializerPlugin plugin) {
+		if(plugin instanceof Ifc2x3tc1StepStreamingDeserializerPlugin) {
+			return new WwbIfcStepStreamingDeserializerPlugin();
+		}
+		
+		return plugin;
 	}
 
 	@Override

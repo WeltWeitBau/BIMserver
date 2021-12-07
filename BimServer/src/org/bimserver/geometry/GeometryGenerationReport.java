@@ -64,6 +64,7 @@ public class GeometryGenerationReport {
 	private boolean applyLayersets;
 	private final Map<Integer, String> debugFiles = new ConcurrentSkipListMap<>();
 	private SkippedBecauseOfInvalidRepresentation skippedBecauseOfInvalidRepresentationIdentifier = new SkippedBecauseOfInvalidRepresentation();
+	private final Map<Long, String> faultyRecords = new HashMap<Long, String>();
 	
 	public synchronized void incrementTriangles(int triangles) {
 		this.numberOfTriangles += triangles;
@@ -223,6 +224,15 @@ public class GeometryGenerationReport {
 			debugFiles.add(debugNode);
 		}
 		
+		ArrayNode faultyNodes = objectMapper.createArrayNode();
+		for (Long identifier : this.faultyRecords.keySet()) {
+			ObjectNode faultyNode = objectMapper.createObjectNode();
+			faultyNode.put("expressID", identifier);
+			faultyNode.put("message", this.faultyRecords.get(identifier));
+			faultyNodes.add(faultyNode);
+		}
+		result.set("faultyRecords", faultyNodes);
+		
 		return result;
 	}
 	
@@ -288,6 +298,15 @@ public class GeometryGenerationReport {
 		builder.append("<tbody>");
 		for (String identifier : this.skippedBecauseOfInvalidRepresentationIdentifier.keySet()) {
 			builder.append("<tr><td>" + identifier + "</td><td>" + this.skippedBecauseOfInvalidRepresentationIdentifier.get(identifier));
+		}
+		builder.append("</tbody></table>");
+		
+		builder.append("<h3>Fixed or skipped records</h3>");
+		builder.append("<table>");
+		builder.append("<thead><tr><th>expressID</th><th>message</th></tr></thead>");
+		builder.append("<tbody>");
+		for (Long identifier : this.faultyRecords.keySet()) {
+			builder.append("<tr><td>#" + identifier + "</td><td>" + this.faultyRecords.get(identifier));
 		}
 		builder.append("</tbody></table>");
 		
@@ -465,5 +484,13 @@ public class GeometryGenerationReport {
 	
 	public long getTimeToGenerateMs() {
 		return end.getTimeInMillis() - start.getTimeInMillis();
+	}
+	
+	public void addFaultyRecord(long expressId, String message) {
+		faultyRecords.put(expressId, message);
+	}
+	
+	public Map<Long, String> getFaultyRecords() {
+		return faultyRecords;
 	}
 }
