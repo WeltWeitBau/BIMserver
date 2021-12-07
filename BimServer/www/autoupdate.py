@@ -14,6 +14,12 @@ import shutil
 def main():
     """The Main function"""
 
+    localPatch = getLocalPatchFile()
+    if localPatch.is_file():
+        print('updating from local file')
+        replaceFiles(localPatch)
+        return
+
     currentVersionName = getCurrentVersion()
     print('current version: ' +  currentVersionName.toString())
     releases = fetchReleases()
@@ -24,6 +30,11 @@ def main():
         updateBimServer(latestRelease)
     else:
         print('BIMserver is already up to date!')
+
+def getLocalPatchFile():
+    currentPath = pathlib.Path(__file__).parent.resolve()
+    localFilePath = pathlib.Path(str(currentPath) + '\\patch.zip')
+    return localFilePath
 
 def getCurrentVersion():
     """lookup the current version of the BIMserver
@@ -108,17 +119,27 @@ def isLeftVersionHigherThanRight(left, right):
 
     if left.major > right.major:
         return True
-    if(left.major < right.major):
+    if left.major < right.major:
         return False
 
     # same major version
     if left.minor > right.minor:
         return True
-    if(left.minor < right.minor):
+    if left.minor < right.minor:
         return False
 
     # same major and minor version
-    return left.patch > right.patch
+    if left.patch > right.patch:
+        return True
+    if left.patch < right.patch:
+        return False
+
+    if left.pre == 0:
+        return True
+    if right.pre == 0:
+        return False
+
+    return left.pre > right.pre
 
 def updateBimServer(newVersion):
     """downloads the new patch and replaces the updated files
@@ -287,15 +308,26 @@ class VersionName:
     major = 0
     minor = 0
     patch = 0
+    pre = 0
 
     def __init__(self, versionAsString):
+        preVersionSplit = versionAsString.split('-alpha.')
+        versionAsString = preVersionSplit[0]
         versionAsArray = versionAsString.replace('v', '').split('.')
         self.major = int(versionAsArray[0])
         self.minor = int(versionAsArray[1])
         self.patch = int(versionAsArray[2])
 
+        if len(preVersionSplit) > 1:
+            self.pre = int(preVersionSplit[1])
+
     def toString(self):
-        return 'v' + str(self.major) + '.' + str(self.minor) + '.' + str(self.patch)
+        versionAsString = 'v' + str(self.major) + '.' + str(self.minor) + '.' + str(self.patch)
+
+        if self.pre > 0:
+            versionAsString += '-alpha.' + str(self.pre)
+
+        return versionAsString
 
 if __name__ == "__main__":
     main()
