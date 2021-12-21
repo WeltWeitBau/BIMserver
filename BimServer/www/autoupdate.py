@@ -33,7 +33,7 @@ def main():
 
 def getLocalPatchFile():
     currentPath = pathlib.Path(__file__).parent.resolve()
-    localFilePath = pathlib.Path(str(currentPath) + '\\patch.zip')
+    localFilePath = pathlib.Path(str(currentPath) + '/patch.zip')
     return localFilePath
 
 def getCurrentVersion():
@@ -63,7 +63,7 @@ def getVersionConfig():
 
     parser = configparser.RawConfigParser()
     currentPath = pathlib.Path(__file__).parent.resolve()
-    versionConfigPath = str(currentPath) + '\\version.cfg'
+    versionConfigPath = str(currentPath) + '/version.cfg'
     parser.read(versionConfigPath)
     return parser
 
@@ -169,7 +169,7 @@ def downloadPatch(newVersion):
     currentPath = pathlib.Path(__file__).parent.resolve()
     versionName = newVersion['name']
 
-    localFilePath = pathlib.Path(str(currentPath) + '\\patch_' + versionName + '-138.zip')
+    localFilePath = pathlib.Path(str(currentPath) + '/patch_' + versionName + '-138.zip')
     if localFilePath.is_file():
         return localFilePath
 
@@ -293,7 +293,7 @@ def updateVersionName(versionName):
         versionName (VersionName): the new version name
     """
     currentPath = pathlib.Path(__file__).parent.resolve()
-    versionConfigPath = str(currentPath) + '\\version.cfg'
+    versionConfigPath = str(currentPath) + '/version.cfg'
     parser = getVersionConfig()
 
     if parser.has_section('config') == False:
