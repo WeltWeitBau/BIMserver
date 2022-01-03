@@ -87,7 +87,7 @@
 		<dependency>
 			<groupId>de.weltweitbau</groupId>
 			<artifactId>bimserver</artifactId>
-			<version>1.0.0</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>

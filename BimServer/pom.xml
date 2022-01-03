@@ -105,7 +105,7 @@
 		<dependency>
 			<groupId>de.weltweitbau</groupId>
 			<artifactId>bimserverclientlib</artifactId>
-			<version>1.0.0</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-collections</groupId>
@@ -197,6 +197,12 @@
 			<groupId>org.opensourcebim</groupId>
 			<artifactId>ifcplugins</artifactId>
 			<version>0.0.99</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.opensourcebim</groupId>
+					<artifactId>shared</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 	</dependencies>
 	<licenses>
