@@ -158,6 +158,10 @@ public class IfcParserWriterUtils {
 	 * @throws DeserializeException
 	 */
 	public static String readString(String value, long lineNumber) throws DeserializeException {
+		if(value.equals("$")) {
+			return "";
+		}
+		
 		String result = value.substring(1, value.length() - 1);
 		// Replace all '' with '
 		while (result.contains("''")) {
