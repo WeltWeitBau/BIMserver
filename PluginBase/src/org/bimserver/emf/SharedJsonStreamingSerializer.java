@@ -334,14 +334,18 @@ public class SharedJsonStreamingSerializer implements StreamingReader {
 				for(String strCurrentKey : map.keySet()) {
 					Object currentValue = map.get(strCurrentKey);
 					
-					String strValue = currentValue.toString().replace("\"", "\\\"");
-					
 					if(bFirst == false) {
 						print(",");
 					} else {
 						bFirst = false;
 					}
 					
+					if(currentValue instanceof Number) {
+						print("\"" + strCurrentKey + "\": " + currentValue.toString() + "\n");
+						continue;
+					}
+					
+					String strValue = currentValue.toString().replace("\"", "\\\"");
 					print("\"" + strCurrentKey + "\": \"" + strValue + "\"\n");
 				}
 				

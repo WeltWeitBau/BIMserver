@@ -568,7 +568,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			return;
 		}
 		
-		HashMap<String, String> includedProperties = new HashMap<String, String>();
+		HashMap<String, Object> includedProperties = new HashMap<String, Object>();
 
 		for (Long definedByOid : isDefinedByOids) {
 			EClass eClass = databaseSession.getEClassForOid(definedByOid);
@@ -610,7 +610,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	 * @throws BimserverDatabaseException
 	 */
 	@SuppressWarnings("unchecked")
-	private void processPropertySet(DatabaseSession databaseSession, HashMap<String, String> includedProperties,
+	private void processPropertySet(DatabaseSession databaseSession, HashMap<String, Object> includedProperties,
 			Long ifcPropertySetDefinition) throws BimserverDatabaseException {
 		Map<String, Set<String>> includeProperties = getQueryPart().getIncludeProperties();
 		Set<String> propertiesToIncludeAll = includeProperties.get("ALL");
@@ -663,7 +663,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	 * @param propertiesToInclude
 	 * @param includedProperties
 	 */
-	private void includePropertySingleValue(HashMapVirtualObject property, String propertySetName, Set<String> propertiesToInclude, HashMap<String, String> includedProperties) {
+	private void includePropertySingleValue(HashMapVirtualObject property, String propertySetName, Set<String> propertiesToInclude, HashMap<String, Object> includedProperties) {
 		String name = (String) property.get("Name");
 
 		if (propertiesToInclude.contains(name) == false) {
@@ -698,7 +698,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	 * @throws BimserverDatabaseException
 	 */
 	@SuppressWarnings("unchecked")
-	private void processQuantities(DatabaseSession databaseSession, HashMap<String, String> includedProperties,
+	private void processQuantities(DatabaseSession databaseSession, HashMap<String, Object> includedProperties,
 			HashMapVirtualObject ifcQuantities, String quantitySetName, Set<String> propertiesToInclude)
 			throws BimserverDatabaseException {
 		EClass eClassForOid = null;
@@ -725,7 +725,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	 * @param propertiesToInclude
 	 * @param includedProperties
 	 */
-	private void includeQuantity(HashMapVirtualObject quantity, String quantitySetName, Set<String> propertiesToInclude, HashMap<String, String> includedProperties) {
+	private void includeQuantity(HashMapVirtualObject quantity, String quantitySetName, Set<String> propertiesToInclude, HashMap<String, Object> includedProperties) {
 		String name = (String) quantity.get("Name");
 
 		if (propertiesToInclude.contains(name) == false) {
@@ -739,7 +739,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			return;
 		}
 		
-		includedProperties.put(quantitySetName + ":" + name, value.toString());
+		includedProperties.put(quantitySetName + ":" + name, value);
 	}
 	
 	/**
