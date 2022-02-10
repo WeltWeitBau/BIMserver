@@ -678,13 +678,17 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		if (value == null) {
 			return;
 		}
+		
+		if(propertiesToInclude.contains("_v")) {
+			name = propertySetName + ":" + name;
+		}
 
 		Object wrappedValue = value.eGet(value.eClass().getEStructuralFeature("wrappedValue"));
 		if (value.eClass().getName().equals("IfcBoolean")) {
 			Enumerator tristate = (Enumerator) wrappedValue;
-			includedProperties.put(propertySetName + ":" + name, tristate.getName().toLowerCase());
+			includedProperties.put(name, tristate.getName().toLowerCase());
 		} else {
-			includedProperties.put(propertySetName + ":" + name, wrappedValue.toString());
+			includedProperties.put(name, wrappedValue.toString());
 		}
 	}
 	
@@ -742,7 +746,11 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			return;
 		}
 		
-		includedProperties.put(quantitySetName + ":" + name, value);
+		if(propertiesToInclude.contains("_v")) {
+			name = quantitySetName + ":" + name;
+		}
+		
+		includedProperties.put(name, value);
 	}
 	
 	/**
