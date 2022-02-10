@@ -61,7 +61,8 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	private QueryContext reusable;
 	private QueryObjectProvider queryObjectProvider;
 	protected HashMapVirtualObject currentObject;
-	private QueryPart queryPart;
+	private final QueryPart queryPart;
+	private boolean bWithPropertySetName = false;
 
 	public DatabaseReadingStackFrame(QueryContext reusable, QueryObjectProvider queryObjectProvider, QueryPart queryPart) {
 		this.reusable = reusable;
@@ -613,6 +614,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	private void processPropertySet(DatabaseSession databaseSession, HashMap<String, Object> includedProperties,
 			Long ifcPropertySetDefinition) throws BimserverDatabaseException {
 		Map<String, Set<String>> includeProperties = getQueryPart().getIncludeProperties();
+		bWithPropertySetName = includeProperties.containsKey("_v");
 		Set<String> propertiesToIncludeAll = includeProperties.get("ALL");
 		EClass eClassForOid = databaseSession.getEClassForOid(ifcPropertySetDefinition);
 
@@ -676,7 +678,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			return;
 		}
 		
-		if(propertiesToInclude.contains("_v")) {
+		if(bWithPropertySetName) {
 			name = propertySetName + ":" + name;
 		}
 
@@ -743,7 +745,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			return;
 		}
 		
-		if(propertiesToInclude.contains("_v")) {
+		if(bWithPropertySetName) {
 			name = quantitySetName + ":" + name;
 		}
 		
