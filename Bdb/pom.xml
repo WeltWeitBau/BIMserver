@@ -2,9 +2,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>bdb</artifactId>
 	<parent>
-		<groupId>org.opensourcebim</groupId>
+		<groupId>de.weltweitbau</groupId>
 		<artifactId>parent</artifactId>
-		<version>1.5.182</version>
+		<version>1.1.0</version>
 	</parent>
 	<packaging>jar</packaging>
 	<name>Bdb</name>
