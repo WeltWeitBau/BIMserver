@@ -247,7 +247,11 @@ public class PluginBundleManager implements AutoCloseable {
 
 		DelegatingClassLoader delegatingClassLoader = new DelegatingClassLoader(getClass().getClassLoader());
 
-		loadDependencies(model.getVersion(), strictDependencyChecking, model, delegatingClassLoader);
+		try { // TODO: This is just a temporary fix
+			loadDependencies(model.getVersion(), strictDependencyChecking, model, delegatingClassLoader);
+		} catch (DependencyCollectionException e1) {
+			e1.printStackTrace();
+		}
 		
 		for (org.apache.maven.model.Dependency dependency : model.getDependencies()) {
 			if (dependency.getGroupId().equals("org.opensourcebim") && (dependency.getArtifactId().equals("shared") || dependency.getArtifactId().equals("pluginbase") || dependency.getArtifactId().equals("ifcplugins"))) {

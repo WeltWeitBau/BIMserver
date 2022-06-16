@@ -238,6 +238,10 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 	private boolean processLine(String line)
 			throws DeserializeException, MetaDataException, BimserverDatabaseException {
 		try {
+			if (line.contains("/*")) {
+				line = removeComments(line);
+			}
+			
 			switch (mode) {
 			case HEADER:
 				if (line.length() > 0) {
@@ -284,6 +288,16 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 
 		return true;
 	}
+	
+	/**
+	 * replace all comments in this line
+	 * @param line
+	 * @return
+	 */
+	private String removeComments(String line) {
+		// remove all occurences of the pattern: /* <comment> */
+		return line.replaceAll("/\\*((?!\\*/).)*\\*/", "");
+	}
 
 	private String getProcessLineErrorMessage(Exception e, String value) {
 		StringBuilder strMessage = new StringBuilder(255);
@@ -300,11 +314,7 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 			ifcHeader = StoreFactory.eINSTANCE.createIfcHeader();
 		}
 		((IdEObjectImpl) ifcHeader).setUuid(UUID.randomUUID());
-		if (line.startsWith("/*")) {
-			if (line.contains("*/")) {
-				line = line.substring(line.indexOf("*/") + 2);
-			}
-		}
+		
 		if (line.startsWith("FILE_DESCRIPTION")) {
 			String filedescription = line.substring("FILE_DESCRIPTION".length()).trim();
 			new IfcHeaderParser().parseDescription(filedescription.substring(1, filedescription.length() - 2),
