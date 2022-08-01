@@ -293,7 +293,7 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 	 */
 	private String removeComments(String line) {
 		// remove all occurences of the pattern: /* <comment> */
-		return line.replaceAll("/\\*((?!\\*/).)*\\*/", "");
+		return line.replaceAll("/\\*((?!\\*/).)*\\*/", "").trim();
 	}
 
 	private String getProcessLineErrorMessage(Exception e, String value) {
