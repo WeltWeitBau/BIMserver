@@ -637,7 +637,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		}
 		
 		if (matchesType(eClassForOid, "IfcElementQuantity")) {
-			processQuantities(databaseSession, includedProperties, ifcPropertySet, propertySetName, propertiesToInclude);
+			processQuantities(databaseSession, includedProperties, ifcPropertySet, propertySetName, propertiesToInclude, propertiesToIncludeAll);
 			return;
 		}
 
@@ -654,7 +654,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			}
 			
 			HashMapVirtualObject property = getByOid(propertyOid);
-			includePropertySingleValue(property, propertySetName, propertiesToInclude, includedProperties);
+			includePropertySingleValue(property, propertySetName, propertiesToInclude, propertiesToIncludeAll, includedProperties);
 		}
 	}
 	
@@ -668,11 +668,18 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	 * @param propertiesToInclude
 	 * @param includedProperties
 	 */
-	private void includePropertySingleValue(HashMapVirtualObject property, String propertySetName, Set<String> propertiesToInclude, HashMap<String, Object> includedProperties) {
+	private void includePropertySingleValue(HashMapVirtualObject property, String propertySetName,
+			Set<String> propertiesToInclude, Set<String> propertiesToIncludeAll,
+			HashMap<String, Object> includedProperties) {
 		String name = (String) property.get("Name");
 
 		if (propertiesToInclude.contains(name) == false) {
-			return;
+			if(propertiesToIncludeAll.contains(name) == false) {
+				return;
+			}
+			
+			propertiesToInclude = propertiesToIncludeAll;
+			propertySetName = "ALL";
 		}
 
 		HashMapWrappedVirtualObject value = (HashMapWrappedVirtualObject) property.get("NominalValue");
@@ -708,7 +715,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	 */
 	@SuppressWarnings("unchecked")
 	private void processQuantities(DatabaseSession databaseSession, HashMap<String, Object> includedProperties,
-			HashMapVirtualObject ifcQuantities, String quantitySetName, Set<String> propertiesToInclude)
+			HashMapVirtualObject ifcQuantities, String quantitySetName, Set<String> propertiesToInclude, Set<String> propertiesToIncludeAll)
 			throws BimserverDatabaseException {
 		EClass eClassForOid = null;
 		List<Long> quantities = (List<Long>) ifcQuantities.get("Quantities");
@@ -720,7 +727,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			}
 
 			HashMapVirtualObject quantity = getByOid(quantityOid);
-			includeQuantity(quantity, quantitySetName, propertiesToInclude, includedProperties);
+			includeQuantity(quantity, quantitySetName, propertiesToInclude, propertiesToIncludeAll, includedProperties);
 		}
 	}
 	
@@ -734,11 +741,17 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	 * @param propertiesToInclude
 	 * @param includedProperties
 	 */
-	private void includeQuantity(HashMapVirtualObject quantity, String quantitySetName, Set<String> propertiesToInclude, HashMap<String, Object> includedProperties) {
+	private void includeQuantity(HashMapVirtualObject quantity, String quantitySetName, Set<String> propertiesToInclude,
+			Set<String> propertiesToIncludeAll, HashMap<String, Object> includedProperties) {
 		String name = (String) quantity.get("Name");
 
 		if (propertiesToInclude.contains(name) == false) {
-			return;
+			if(propertiesToIncludeAll.contains(name) == false) {
+				return;
+			}
+			
+			propertiesToInclude = propertiesToIncludeAll;
+			quantitySetName = "ALL";
 		}
 		
 		String strQuantityType = quantity.eClass().getName().replace("IfcQuantity", "");

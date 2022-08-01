@@ -261,9 +261,6 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 					waitingList.dumpIfNotEmpty();
 				} else {
 					if (line.length() > 0 && line.charAt(0) == '#') {
-						while (line.endsWith("*/")) {
-							line = line.substring(0, line.lastIndexOf("/*")).trim();
-						}
 						if (line.endsWith(";")) {
 							processRecord(line);
 						} else {

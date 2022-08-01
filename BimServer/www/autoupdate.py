@@ -14,22 +14,27 @@ import shutil
 def main():
     """The Main function"""
 
-    localPatch = getLocalPatchFile()
-    if localPatch.is_file():
-        print('updating from local file')
-        replaceFiles(localPatch)
-        return
+    try:
+        localPatch = getLocalPatchFile()
+        if localPatch.is_file():
+            print('updating from local file')
+            replaceFiles(localPatch)
+            return
 
-    currentVersionName = getCurrentVersion()
-    print('current version: ' +  currentVersionName.toString())
-    releases = fetchReleases()
-    latestRelease = findLatestRelease(releases)
-    latestVersionName = VersionName(latestRelease['name'])
-    print('latest version: ' +  latestVersionName.toString())
-    if(isLeftVersionHigherThanRight(latestVersionName, currentVersionName)):
-        updateBimServer(latestRelease)
-    else:
-        print('BIMserver is already up to date!')
+        currentVersionName = getCurrentVersion()
+        print('current version: ' +  currentVersionName.toString())
+        releases = fetchReleases()
+        latestRelease = findLatestRelease(releases)
+        latestVersionName = VersionName(latestRelease['name'])
+        print('latest version: ' +  latestVersionName.toString())
+        if(isLeftVersionHigherThanRight(latestVersionName, currentVersionName)):
+            updateBimServer(latestRelease)
+        else:
+            print('BIMserver is already up to date!')
+    except:
+        print("Something went wrong")
+    finally:
+        input("press enter!")
 
 def getLocalPatchFile():
     currentPath = pathlib.Path(__file__).parent.resolve()
