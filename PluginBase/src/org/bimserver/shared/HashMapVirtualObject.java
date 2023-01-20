@@ -59,6 +59,12 @@ public class HashMapVirtualObject extends AbstractHashMapVirtualObject implement
 	private Map<EStructuralFeature, Object> useForSerializationFeatures = new HashMap<>();
 	private HashMap<EReference, AbstractHashMapVirtualObject> directReferences;
 	private HashMap<EReference, Set<HashMapVirtualObject>> directListReferences;
+	
+	/**
+	 * Added by WWB
+	 * Contains additional data, that is not part of eClass
+	 */
+	private HashMap<String, Object> additionalData;
 
 	public HashMapVirtualObject(QueryContext reusable, EClass eClass) {
 		this.reusable = reusable;
@@ -700,5 +706,21 @@ public class HashMapVirtualObject extends AbstractHashMapVirtualObject implement
 
 	public void setUuid(UUID uuid) {
 		this.uuid = uuid;
+	}
+	
+	public boolean hasAdditionalData() {
+		return additionalData != null;
+	}
+	
+	public void putAdditionalData(String strKey, Object value) {
+		if (additionalData == null) {
+			additionalData = new HashMap<String, Object>();
+		}
+		
+		additionalData.put(strKey, value);
+	}
+	
+	public HashMap<String, Object> getAdditionalData() {
+		return additionalData;
 	}
 }

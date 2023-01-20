@@ -20,6 +20,8 @@ package org.bimserver.database.queries;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 import org.bimserver.BimserverDatabaseException;
@@ -57,9 +59,14 @@ public class QueryNamesAndTypesStackFrame extends DatabaseReadingStackFrame {
 				converted = true;
 //				throw new BimserverDatabaseException(eClass.getName() + " does not have a GlobalId feature");
 			} else {
-				ObjectIdentifier oidOfName = getOidOfGuidAlternative(eClass, nameFeature, name, reusable.getDatabaseInterface(), reusable.getPid(), reusable.getRid());
-				if (oidOfName != null) {
-					oids.add(oidOfName.getOid());
+				 
+				List<ObjectIdentifier> identifiers = getOidOfGuidAlternative(eClass, nameFeature, name, reusable.getDatabaseInterface(), reusable.getPid(), reusable.getRid());
+				if(identifiers == null) {
+					continue;
+				}
+				
+				for(ObjectIdentifier identifier : identifiers) {
+					oids.add(identifier.getOid());
 				}
 			}
 		}
@@ -68,33 +75,44 @@ public class QueryNamesAndTypesStackFrame extends DatabaseReadingStackFrame {
 		}
 	}
 
-	public ObjectIdentifier getOidOfGuidAlternative(EClass eClass, EAttribute attribute, Object value, DatabaseInterface databaseInterface, int pid, int rid) throws BimserverDatabaseException {
-		if (attribute.getEAnnotation("singleindex") != null) {
-			String indexTableName = attribute.getEContainingClass().getEPackage().getName() + "_" + eClass.getName() + "_" + attribute.getName();
-			byte[] queryBytes = null;
-			if (value instanceof String) {
-				queryBytes = ((String)value).getBytes(Charsets.UTF_8);
-			} else if (value instanceof Integer) {
-				queryBytes = BinUtils.intToByteArray((Integer)value);
-			} else {
-				throw new BimserverDatabaseException("Unsupported type " + value);
-			}
-			ByteBuffer valueBuffer = ByteBuffer.allocate(queryBytes.length + 8);
-			valueBuffer.putInt(pid);
-			valueBuffer.putInt(-rid);
-			valueBuffer.put(queryBytes);
-			byte[] firstDuplicate = databaseInterface.get(indexTableName, valueBuffer.array());
-			if (firstDuplicate != null) {
-				ByteBuffer buffer = ByteBuffer.wrap(firstDuplicate);
-				buffer.getInt(); // pid
-				long oid = buffer.getLong();
-				
-				return new ObjectIdentifier(oid, (short)oid);
-			}
-		} else {
+	public List<ObjectIdentifier> getOidOfGuidAlternative(EClass eClass, EAttribute attribute, Object value,
+			DatabaseInterface databaseInterface, int pid, int rid) throws BimserverDatabaseException {
+		if (attribute.getEAnnotation("singleindex") == null) {
 			throw new BimserverDatabaseException("Name queries are not implemented yet");
 		}
-		return null;
+		
+		String indexTableName = attribute.getEContainingClass().getEPackage().getName() + "_" + eClass.getName() + "_" + attribute.getName();
+		
+		byte[] queryBytes = null;
+		if (value instanceof String) {
+			queryBytes = ((String) value).getBytes(Charsets.UTF_8);
+		} else if (value instanceof Integer) {
+			queryBytes = BinUtils.intToByteArray((Integer) value);
+		} else {
+			throw new BimserverDatabaseException("Unsupported type " + value);
+		}
+		
+		ByteBuffer valueBuffer = ByteBuffer.allocate(queryBytes.length + 8);
+		valueBuffer.putInt(pid);
+		valueBuffer.putInt(-rid);
+		valueBuffer.put(queryBytes);
+		
+		List<byte[]> duplicates = databaseInterface.getDuplicates(indexTableName, valueBuffer.array());
+		
+		if (duplicates == null || duplicates.isEmpty()) {
+			return null;
+		}
+
+		List<ObjectIdentifier> identifiers = new LinkedList<ObjectIdentifier>();
+
+		for (byte[] currentDuplicate : duplicates) {
+			ByteBuffer buffer = ByteBuffer.wrap(currentDuplicate);
+			buffer.getInt(); // pid
+			long oid = buffer.getLong();
+			identifiers.add(new ObjectIdentifier(oid, (short) oid));
+		}
+
+		return identifiers;
 	}
 	
 //	public ObjectIdentifier getOidOfName(String schema, String name, int pid, int rid) throws BimserverDatabaseException {

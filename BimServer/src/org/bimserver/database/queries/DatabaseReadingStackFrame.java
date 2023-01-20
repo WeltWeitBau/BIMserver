@@ -22,11 +22,15 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.BimserverDatabaseException;
 import org.bimserver.database.DatabaseSession.GetResult;
+import org.bimserver.database.DatabaseSession;
 import org.bimserver.database.Record;
 import org.bimserver.database.SearchingRecordIterator;
 import org.bimserver.database.queries.om.CanInclude;
@@ -42,6 +46,7 @@ import org.bimserver.shared.QueryContext;
 import org.bimserver.shared.WrappedVirtualObject;
 import org.bimserver.utils.BinUtils;
 import org.eclipse.emf.ecore.EAttribute;
+import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
@@ -60,6 +65,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	private final QueryObjectProvider queryObjectProvider;
 	protected HashMapVirtualObject currentObject;
 	private final QueryPart queryPart;
+	private boolean bWithPropertySetName = false;
 
 	public DatabaseReadingStackFrame(QueryContext reusable, QueryObjectProvider queryObjectProvider, QueryPart queryPart) {
 		this.reusable = reusable;
@@ -288,6 +294,15 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 					throw new BimserverDatabaseException("Reading " + eClass.getName() + "." + feature.getName(), e);
 				}
 			}
+			
+			if (getQueryPart().hasIncludeProperties()) {
+				try {
+					includeProperties(idEObject);
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage(), e);
+				}
+			}
+			
 			return idEObject;
 		} catch (BufferUnderflowException e) {
 			throw new BimserverDatabaseException("Reading " + eClass.getName(), e);
@@ -532,5 +547,237 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		} finally {
 			recordIterator.close();
 		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Includes additional properties to the current HashMapVirtualObject.
+	 * @throws BimserverDatabaseException
+	 */
+	@SuppressWarnings("unchecked")
+	private void includeProperties(HashMapVirtualObject object) throws BimserverDatabaseException {
+		if(object == null) {
+			return;
+		}
+		
+		if(object.has("includedProperties")) {
+			return;
+		}
+		
+		DatabaseSession databaseSession = getQueryObjectProvider().getDatabaseSession();
+		List<Long> isDefinedByOids = (List<Long>) object.get("IsDefinedBy");
+		
+		if (isDefinedByOids == null) {
+			return;
+		}
+		
+		HashMap<String, Object> includedProperties = new HashMap<String, Object>();
+
+		for (Long definedByOid : isDefinedByOids) {
+			EClass eClass = databaseSession.getEClassForOid(definedByOid);
+			if (getPackageMetaData().getEClass("IfcRelDefinesByProperties").isSuperTypeOf(eClass)) {
+				HashMapVirtualObject ifcRelDefinesByProperties = getByOid(definedByOid);
+				Long ifcPropertySetDefinition = (Long) ifcRelDefinesByProperties.get("RelatingPropertyDefinition");
+				processPropertySet(databaseSession, includedProperties, ifcPropertySetDefinition);
+			} else if (getPackageMetaData().getEClass("IfcRelDefinesByType").isSuperTypeOf(eClass)) {
+				HashMapVirtualObject ifcRelDefinesByType = getByOid(definedByOid);
+				Long relatingTypeId = (Long) ifcRelDefinesByType.get("RelatingType");
+				EClass eClassForOid = databaseSession.getEClassForOid(relatingTypeId);
+				if (getPackageMetaData().getEClass("IfcTypeObject").isSuperTypeOf(eClassForOid)) {
+					HashMapVirtualObject ifcTypeObject = getByOid(relatingTypeId);
+					List<Long> propertySets = (List<Long>) ifcTypeObject.get("HasPropertySets");
+					if (propertySets != null) {
+						for (Long propertySetId : propertySets) {
+							processPropertySet(databaseSession, includedProperties, propertySetId);
+						}
+					}
+				}
+			} else {
+				LOGGER.info(eClass.getName());
+			}
+		}
+		
+		if(includedProperties.isEmpty() == false) {
+			object.putAdditionalData("includedProperties", includedProperties);
+		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Searches a PropertySet for properties to be included in the current HashMapVirtualObject
+	 * 
+	 * @param databaseSession
+	 * @param includedProperties
+	 * @param ifcPropertySetDefinition
+	 * @throws BimserverDatabaseException
+	 */
+	@SuppressWarnings("unchecked")
+	private void processPropertySet(DatabaseSession databaseSession, HashMap<String, Object> includedProperties,
+			Long ifcPropertySetDefinition) throws BimserverDatabaseException {
+		Map<String, Set<String>> includeProperties = getQueryPart().getIncludeProperties();
+		bWithPropertySetName = includeProperties.containsKey("_v");
+		Set<String> propertiesToIncludeAll = includeProperties.get("ALL");
+		EClass eClassForOid = databaseSession.getEClassForOid(ifcPropertySetDefinition);
+
+		HashMapVirtualObject ifcPropertySet = getByOid(ifcPropertySetDefinition);
+		if(ifcPropertySet.has("Name") == false) {
+			return;
+		}
+		
+		String propertySetName = (String) ifcPropertySet.get("Name");
+		Set<String> propertiesToInclude = includeProperties.get(propertySetName);
+
+		if (propertiesToInclude == null && propertiesToIncludeAll == null) {
+			return;
+		} else if (propertiesToInclude == null) {
+			propertiesToInclude = propertiesToIncludeAll;
+			propertySetName = "ALL";
+		}
+		
+		if (matchesType(eClassForOid, "IfcElementQuantity")) {
+			processQuantities(databaseSession, includedProperties, ifcPropertySet, propertySetName, propertiesToInclude, propertiesToIncludeAll);
+			return;
+		}
+
+		if (matchesType(eClassForOid, "IfcPropertySet") == false) {
+			return;
+		}
+
+		List<Long> properties = (List<Long>) ifcPropertySet.get("HasProperties");
+		for (long propertyOid : properties) {
+			eClassForOid = databaseSession.getEClassForOid(propertyOid);
+			if (matchesType(eClassForOid, "IfcPropertySingleValue") == false) {
+				LOGGER.info("processPropertySet: Type not supported! - " + eClassForOid.getName());
+				continue;
+			}
+			
+			HashMapVirtualObject property = getByOid(propertyOid);
+			includePropertySingleValue(property, propertySetName, propertiesToInclude, propertiesToIncludeAll, includedProperties);
+		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * add a IfcPropertySingleValue to the included properties
+	 * 
+	 * @param property
+	 * @param propertySetName
+	 * @param propertiesToInclude
+	 * @param includedProperties
+	 */
+	private void includePropertySingleValue(HashMapVirtualObject property, String propertySetName,
+			Set<String> propertiesToInclude, Set<String> propertiesToIncludeAll,
+			HashMap<String, Object> includedProperties) {
+		String name = (String) property.get("Name");
+
+		if (propertiesToInclude.contains(name) == false) {
+			if(propertiesToIncludeAll.contains(name) == false) {
+				return;
+			}
+			
+			propertiesToInclude = propertiesToIncludeAll;
+			propertySetName = "ALL";
+		}
+
+		HashMapWrappedVirtualObject value = (HashMapWrappedVirtualObject) property.get("NominalValue");
+
+		if (value == null) {
+			return;
+		}
+		
+		if(bWithPropertySetName) {
+			name = propertySetName + ":" + name;
+		}
+
+		Object wrappedValue = value.eGet(value.eClass().getEStructuralFeature("wrappedValue"));
+		if (value.eClass().getName().equals("IfcBoolean")) {
+			Enumerator tristate = (Enumerator) wrappedValue;
+			includedProperties.put(name, tristate.getName().toLowerCase());
+		} else {
+			includedProperties.put(name, wrappedValue.toString());
+		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * Searches a Quantity Set for quantities to be included in the current HashMapVirtualObject
+	 * 
+	 * @param databaseSession
+	 * @param includedProperties
+	 * @param ifcQuantities
+	 * @param quantitySetName
+	 * @param propertiesToInclude
+	 * @throws BimserverDatabaseException
+	 */
+	@SuppressWarnings("unchecked")
+	private void processQuantities(DatabaseSession databaseSession, HashMap<String, Object> includedProperties,
+			HashMapVirtualObject ifcQuantities, String quantitySetName, Set<String> propertiesToInclude, Set<String> propertiesToIncludeAll)
+			throws BimserverDatabaseException {
+		EClass eClassForOid = null;
+		List<Long> quantities = (List<Long>) ifcQuantities.get("Quantities");
+		for (long quantityOid : quantities) {
+			eClassForOid = databaseSession.getEClassForOid(quantityOid);
+			if (matchesType(eClassForOid, "IfcPhysicalQuantity") == false) {
+				LOGGER.info("processQuantities: Type not supported! - " + eClassForOid.getName());
+				continue;
+			}
+
+			HashMapVirtualObject quantity = getByOid(quantityOid);
+			includeQuantity(quantity, quantitySetName, propertiesToInclude, propertiesToIncludeAll, includedProperties);
+		}
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * add a IfcPhysicalQuantity value to the included properties
+	 * 
+	 * @param quantity
+	 * @param quantitySetName
+	 * @param propertiesToInclude
+	 * @param includedProperties
+	 */
+	private void includeQuantity(HashMapVirtualObject quantity, String quantitySetName, Set<String> propertiesToInclude,
+			Set<String> propertiesToIncludeAll, HashMap<String, Object> includedProperties) {
+		String name = (String) quantity.get("Name");
+
+		if (propertiesToInclude.contains(name) == false) {
+			if(propertiesToIncludeAll.contains(name) == false) {
+				return;
+			}
+			
+			propertiesToInclude = propertiesToIncludeAll;
+			quantitySetName = "ALL";
+		}
+		
+		String strQuantityType = quantity.eClass().getName().replace("IfcQuantity", "");
+		Object value = quantity.get(strQuantityType + "Value");
+
+		if (value == null) {
+			return;
+		}
+		
+		if(bWithPropertySetName) {
+			name = quantitySetName + ":" + name;
+		}
+		
+		includedProperties.put(name, value);
+	}
+	
+	/**
+	 * Added by WWB.
+	 * 
+	 * is subClass the same or a child of strSuper?
+	 * 
+	 * @param subClass
+	 * @param strSuper
+	 * @return true if subClass inherits from strSuper or is the same as strSuper
+	 */
+	private boolean matchesType(EClass subClass, String strSuper) {
+		return getPackageMetaData().getEClass(strSuper).isSuperTypeOf(subClass);
 	}
 }

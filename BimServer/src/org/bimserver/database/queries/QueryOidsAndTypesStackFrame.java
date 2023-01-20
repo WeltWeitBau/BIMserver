@@ -18,22 +18,33 @@ package org.bimserver.database.queries;
  *****************************************************************************/
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.BimserverDatabaseException;
 import org.bimserver.database.BimserverLockConflictException;
+import org.bimserver.database.DatabaseSession;
 import org.bimserver.database.DatabaseSession.GetResult;
 import org.bimserver.database.Record;
 import org.bimserver.database.SearchingRecordIterator;
 import org.bimserver.database.queries.om.QueryException;
 import org.bimserver.database.queries.om.QueryPart;
 import org.bimserver.shared.HashMapVirtualObject;
+import org.bimserver.shared.HashMapWrappedVirtualObject;
 import org.bimserver.shared.QueryContext;
+import org.bimserver.shared.VirtualObject;
 import org.bimserver.utils.BinUtils;
+import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EClass;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryOidsAndTypesStackFrame extends DatabaseReadingStackFrame implements ObjectProvidingStackFrame {
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(QueryOidsAndTypesStackFrame.class);
 
 	private EClass eClass;
 	private SearchingRecordIterator typeRecordIterator;

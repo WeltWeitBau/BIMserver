@@ -20,6 +20,7 @@ package org.bimserver.database.queries;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.bimserver.BimserverDatabaseException;
@@ -83,12 +84,14 @@ public class QueryGuidsAndTypesStackFrame extends DatabaseReadingStackFrame {
 			valueBuffer.putInt(pid);
 			valueBuffer.putInt(-rid);
 			valueBuffer.put(queryBytes);
-			byte[] firstDuplicate = databaseInterface.get(indexTableName, valueBuffer.array());
-			if (firstDuplicate != null) {
-				ByteBuffer buffer = ByteBuffer.wrap(firstDuplicate);
+			List<byte[]> duplicates = databaseInterface.getDuplicates(indexTableName, valueBuffer.array());
+			if (duplicates != null && duplicates.isEmpty() == false) {				
+				byte[] lastDuplicate = duplicates.get(duplicates.size()-1);
+							
+				ByteBuffer buffer = ByteBuffer.wrap(lastDuplicate);
 				buffer.getInt(); // pid
 				long oid = buffer.getLong();
-				
+							
 				return new ObjectIdentifier(oid, (short)oid);
 			}
 		} else {

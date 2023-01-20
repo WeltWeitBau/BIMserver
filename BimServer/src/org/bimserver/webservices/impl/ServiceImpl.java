@@ -169,6 +169,7 @@ import org.bimserver.emf.Schema;
 import org.bimserver.geometry.accellerator.Node;
 import org.bimserver.geometry.accellerator.NodeCounter;
 import org.bimserver.geometry.accellerator.Octree;
+import org.bimserver.ifc.step.deserializer.Ifc2x3tc1StepStreamingDeserializerPlugin;
 import org.bimserver.interfaces.objects.SAccessMethod;
 import org.bimserver.interfaces.objects.SAction;
 import org.bimserver.interfaces.objects.SBounds;
@@ -302,6 +303,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
+
+import de.weiltweitbau.deserializers.WwbIfcStepStreamingDeserializerPlugin;
 
 public class ServiceImpl extends GenericServiceImpl implements ServiceInterface {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ServiceImpl.class);
@@ -1207,6 +1210,9 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 					return (SLongCheckinActionState) getBimServer().getSConverter().convertToSObject(progressTopic.getLastProgress());
 				} else if (plugin instanceof StreamingDeserializerPlugin) {
 					StreamingDeserializerPlugin streaminDeserializerPlugin = (StreamingDeserializerPlugin) plugin;
+					
+					streaminDeserializerPlugin = getWwbStreamingDeserializerIfDisabled(streaminDeserializerPlugin);
+					
 					StreamingDeserializer streamingDeserializer = streaminDeserializerPlugin.createDeserializer(getBimServer().getPluginSettingsCache().getPluginSettings(deserializerPluginConfiguration.getOid()));
 					streamingDeserializer.init(getBimServer().getDatabase().getMetaDataManager().getPackageMetaData(project.getSchema()));
 					RestartableInputStream restartableInputStream = new RestartableInputStream(originalInputStream, file);
@@ -1232,6 +1238,14 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 				throw new UserException("No (enabled) (streaming) deserializer found with oid " + deserializerOid);
 			}
 		}
+	}
+	
+	private StreamingDeserializerPlugin getWwbStreamingDeserializerIfDisabled(StreamingDeserializerPlugin plugin) {
+		if(plugin instanceof Ifc2x3tc1StepStreamingDeserializerPlugin) {
+			return new WwbIfcStepStreamingDeserializerPlugin();
+		}
+		
+		return plugin;
 	}
 
 	@Override
@@ -1709,6 +1723,11 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 	@Override
 	public SUser getUserByUserName(String username) throws ServerException, UserException {
 		requireRealUserAuthentication();
+		
+		if(isUserAccessable(username) == false) {
+			throw new UserException("Admin rights required to list users");
+		}
+		
 		DatabaseSession session = getBimServer().getDatabase().createSession(OperationType.READ_ONLY);
 		try {
 			BimDatabaseAction<User> action = new GetUserByUserNameDatabaseAction(session, getInternalAccessMethod(), username);
@@ -1896,6 +1915,11 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 	@Override
 	public SUser getUserByUoid(Long uoid) throws ServerException, UserException {
 		requireAuthentication();
+		
+		if(isUserAccessable(uoid) == false) {
+			throw new UserException("Admin rights required to see user");
+		}
+		
 		DatabaseSession session = getBimServer().getDatabase().createSession(OperationType.READ_ONLY);
 		try {
 			GetUserByUoidDatabaseAction action = new GetUserByUoidDatabaseAction(session, getInternalAccessMethod(), uoid);
@@ -1905,6 +1929,34 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 		} finally {
 			session.close();
 		}
+	}
+	
+	private boolean isUserAccessable(String strUsername) throws ServerException, UserException {
+		return isUserAccessable(-1, strUsername);
+	}
+	
+	private boolean isUserAccessable(long uoid) throws ServerException, UserException {
+		return isUserAccessable(uoid, null);
+	}
+	
+	private boolean isUserAccessable(long uoid, String strUsername) throws ServerException, UserException {
+		if (getBimServer().getServerSettingsCache().getServerSettings().getHideUserListForNonAdmin() == false) {
+			return true;
+		}
+		
+		if (getCurrentUser() != null & getCurrentUser().getUserType() == SUserType.ADMIN) {
+			return true;
+		}
+		
+		if(uoid > -1 && getCurrentUser().getOid() == uoid) {
+			return true;
+		}
+		
+		if(strUsername != null && strUsername.equals(getCurrentUser().getUsername())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 	public List<SUser> getAllNonAuthorizedUsersOfProject(Long poid) throws ServerException, UserException {
