@@ -65,6 +65,8 @@ import org.bimserver.shared.exceptions.ServerException;
 import org.bimserver.shared.exceptions.ServiceException;
 import org.bimserver.shared.exceptions.UserException;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 @WebService(name = "ServiceInterface", targetNamespace="org.bimserver")
 @SOAPBinding(style = Style.DOCUMENT, use = Use.LITERAL, parameterStyle = ParameterStyle.WRAPPED)
 public interface ServiceInterface extends PublicInterface {
@@ -857,6 +859,12 @@ public interface ServiceInterface extends PublicInterface {
 		@WebParam(name = "roid2", partName = "compare.roid2") Long roid2,
 		@WebParam(name = "sCompareType", partName = "compare.sCompareType") SCompareType sCompareType, 
 		@WebParam(name = "mcid", partName = "compare.mcid") Long mcid) throws ServerException, UserException;
+	
+	@WebMethod(action = "detectClashes")
+	ObjectNode detectClashes(
+		@WebParam(name = "roid1", partName = "compare.roid1") Long roid1,
+		@WebParam(name = "roid2", partName = "compare.roid2") Long roid2,
+		@WebParam(name = "rules", partName = "compare.rules") String rules) throws ServerException, UserException;
 
 	/**
 	 * Get a revision summary
@@ -867,7 +875,7 @@ public interface ServiceInterface extends PublicInterface {
 	 */
 	@WebMethod(action = "getRevisionSummary")
 	SRevisionSummary getRevisionSummary(
-		@WebParam(name = "roid", partName = "getRevisionSummary.roid") Long roid) throws ServerException, UserException;		
+		@WebParam(name = "roid", partName = "getRevisionSummary.roid") Long roid) throws ServerException, UserException;
 
 	/**
 	 * Check whether the given user has rights on the given project

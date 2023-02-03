@@ -301,9 +301,11 @@ import org.opensourcebim.bcf.ReadOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 
+import de.weiltweitbau.database.actions.WwbClashDetectorAction;
 import de.weiltweitbau.deserializers.WwbIfcStepStreamingDeserializerPlugin;
 
 public class ServiceImpl extends GenericServiceImpl implements ServiceInterface {
@@ -1797,6 +1799,20 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 			return handleException(e);
 		} finally {
 			session.close();
+		}
+	}
+	
+	@Override
+	public ObjectNode detectClashes(Long roid1, Long roid2, String rules) throws ServerException, UserException {
+		requireRealUserAuthentication();
+
+		try (DatabaseSession session = getBimServer().getDatabase().createSession(OperationType.READ_ONLY);) {
+			BimDatabaseAction<ObjectNode> action = new WwbClashDetectorAction(getBimServer(), session,
+					getInternalAccessMethod(), getAuthorization(), -1, roid1, roid2, rules);
+			
+			return session.executeAndCommitAction(action);
+		} catch (Exception e) {
+			return handleException(e);
 		}
 	}
 

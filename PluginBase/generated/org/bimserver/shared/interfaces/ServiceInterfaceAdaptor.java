@@ -597,4 +597,7 @@ public class ServiceInterfaceAdaptor implements org.bimserver.shared.interfaces.
 	public void validateModelChecker(java.lang.Long oid) throws UserException, ServerException {
 	}
 	
+	public com.fasterxml.jackson.databind.node.ObjectNode detectClashes(java.lang.Long roid1, java.lang.Long roid2, java.lang.String rules) throws ServerException, UserException {
+		return null;
+	}
 }

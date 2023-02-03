@@ -157,7 +157,10 @@ public class JsonConverter {
 		} else if (object instanceof byte[]) {
 			byte[] data = (byte[]) object;
 			return new TextNode(new String(Base64.encodeBase64(data), Charsets.UTF_8));
+		} else if(object instanceof JsonNode) {
+			return (JsonNode) object;
 		}
+		
 		throw new UnsupportedOperationException(object.getClass().getName());
 	}
 	
