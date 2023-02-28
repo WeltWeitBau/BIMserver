@@ -9,7 +9,6 @@
 		<version>1.2.0</version>
 	</parent>
 	<properties>
-		<jetty.version>9.4.38.v20210224</jetty.version>
 		<cxf.version>3.3.2</cxf.version>
 	</properties>
 	<build>
