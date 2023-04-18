@@ -693,9 +693,11 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		}
 
 		Object wrappedValue = value.eGet(value.eClass().getEStructuralFeature("wrappedValue"));
-		if (value.eClass().getName().equals("IfcBoolean")) {
+		if (matchesType(value.eClass(), "IfcBoolean")) {
 			Enumerator tristate = (Enumerator) wrappedValue;
 			includedProperties.put(name, tristate.getName().toLowerCase());
+		} else if(wrappedValue instanceof Number || wrappedValue instanceof Boolean) {
+			includedProperties.put(name, wrappedValue);
 		} else {
 			includedProperties.put(name, wrappedValue.toString());
 		}
