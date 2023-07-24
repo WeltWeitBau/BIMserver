@@ -47,6 +47,8 @@ import org.bimserver.interfaces.objects.SWebModulePluginConfiguration;
 import org.bimserver.shared.exceptions.ServerException;
 import org.bimserver.shared.exceptions.UserException;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 @WebService(name = "PluginInterface", targetNamespace="org.bimserver")
 @SOAPBinding(style = Style.DOCUMENT, use = Use.LITERAL, parameterStyle = ParameterStyle.WRAPPED)
 public interface PluginInterface extends PublicInterface {
@@ -615,6 +617,9 @@ public interface PluginInterface extends PublicInterface {
 		@WebParam(name = "groupId", partName = "uninstallPluginBundle.groupId") String groupId, 
 		@WebParam(name = "artifactId", partName = "uninstallPluginBundle.artifactId") String artifactId, 
 		@WebParam(name = "version", partName = "uninstallPluginBundle.version") String version) throws UserException, ServerException;
+	
+	@WebMethod(action = "updateInstalledPluginBundles")
+	ObjectNode updateInstalledPluginBundles() throws UserException, ServerException;
 	
 	@WebMethod(action = "getPluginInformation")
 	List<SPluginInformation> getPluginInformation(

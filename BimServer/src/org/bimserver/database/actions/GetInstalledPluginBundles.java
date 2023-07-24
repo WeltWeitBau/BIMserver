@@ -45,6 +45,8 @@ import org.bimserver.shared.exceptions.UserException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.weiltweitbau.WwbConstants;
+
 public class GetInstalledPluginBundles extends PluginBundleDatabaseAction<List<SPluginBundle>> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(GetInstalledPluginBundle.class);
 	private BimServer bimServer;
@@ -61,7 +63,7 @@ public class GetInstalledPluginBundles extends PluginBundleDatabaseAction<List<S
 	public List<SPluginBundle> execute() throws UserException, BimserverLockConflictException, BimserverDatabaseException, ServerException {
 		List<SPluginBundle> result = Collections.synchronizedList(new ArrayList<>());
 
-		bimserverVersion = new DefaultArtifactVersion(bimServer.getVersionChecker().getLocalVersion().getFullString());
+		bimserverVersion = new DefaultArtifactVersion(WwbConstants.BIM_SERVER_VERSION);
 
 		GitHubPluginRepository repository = new GitHubPluginRepository(bimServer.getMavenPluginRepository(), bimServer.getServerSettingsCache().getServerSettings().getServiceRepositoryUrl());
 

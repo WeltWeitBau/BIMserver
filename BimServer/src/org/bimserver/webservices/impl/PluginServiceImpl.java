@@ -107,6 +107,10 @@ import org.bimserver.webservices.SPluginConfigurationComparator;
 import org.bimserver.webservices.ServiceMap;
 import org.eclipse.emf.common.util.EList;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import de.weiltweitbau.database.actions.UpdateInstalledPluginBundlesAction;
+
 public class PluginServiceImpl extends GenericServiceImpl implements PluginInterface {
 	public PluginServiceImpl(ServiceMap serviceMap) {
 		super(serviceMap);
@@ -1426,6 +1430,23 @@ public class PluginServiceImpl extends GenericServiceImpl implements PluginInter
 		} finally {
 			session.close();
 		}
+	}
+	
+	@Override
+	public ObjectNode updateInstalledPluginBundles() throws UserException, ServerException {
+		requireRealUserAuthentication();
+		DatabaseSession session = getBimServer().getDatabase().createSession(OperationType.POSSIBLY_WRITE);
+		try {
+			BimDatabaseAction<ObjectNode> action =
+					new UpdateInstalledPluginBundlesAction(getBimServer(), session, getInternalAccessMethod());
+			return session.executeAndCommitAction(action);
+		} catch (Exception e) {
+			handleException(e);
+		} finally {
+			session.close();
+		}
+		
+		return null;
 	}
 
 	@Override

@@ -357,5 +357,9 @@ public class PluginInterfaceAdaptor implements org.bimserver.shared.interfaces.P
 	
 	public void updateSerializer(org.bimserver.interfaces.objects.SSerializerPluginConfiguration serializer) throws UserException, ServerException {
 	}
+
+	public com.fasterxml.jackson.databind.node.ObjectNode updateInstalledPluginBundles() throws UserException, ServerException {
+		return null;
+	}
 	
 }
