@@ -170,6 +170,7 @@ import org.bimserver.geometry.accellerator.Node;
 import org.bimserver.geometry.accellerator.NodeCounter;
 import org.bimserver.geometry.accellerator.Octree;
 import org.bimserver.ifc.step.deserializer.Ifc2x3tc1StepStreamingDeserializerPlugin;
+import org.bimserver.ifc.step.deserializer.Ifc4StepStreamingDeserializerPlugin;
 import org.bimserver.interfaces.objects.SAccessMethod;
 import org.bimserver.interfaces.objects.SAction;
 import org.bimserver.interfaces.objects.SBounds;
@@ -1243,7 +1244,7 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 	}
 	
 	private StreamingDeserializerPlugin getWwbStreamingDeserializerIfDisabled(StreamingDeserializerPlugin plugin) {
-		if(plugin instanceof Ifc2x3tc1StepStreamingDeserializerPlugin) {
+		if(plugin instanceof Ifc2x3tc1StepStreamingDeserializerPlugin || plugin instanceof Ifc4StepStreamingDeserializerPlugin) {
 			return new WwbIfcStepStreamingDeserializerPlugin();
 		}
 		

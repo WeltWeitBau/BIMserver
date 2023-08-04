@@ -73,6 +73,15 @@ import nl.tue.buildingsmart.schema.Attribute;
 import nl.tue.buildingsmart.schema.EntityDefinition;
 import nl.tue.buildingsmart.schema.ExplicitAttribute;
 
+/**
+ * Copy of org.bimserver.ifc.step.deserializer.IfcStepStreamingDeserializer
+ * 
+ * apart from some modifications this should match commit a781c364413aa10cabfa133c9aaacd260cc15303
+ * 
+ * @author andreas
+ *
+ */
+
 public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IfcStepStreamingDeserializer.class);
 	private ByteProgressReporter byteProgressReporter;
@@ -98,6 +107,7 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 
 	// Use String instead of EClass, compare takes 1.7%
 	private final Map<String, AtomicInteger> summaryMap = new TreeMap<>();
+	private int numberOfEntitiesRead;
 
 	@Override
 	public void init(PackageMetaData packageMetaData) {
@@ -160,7 +170,7 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 						throw new DeserializeException(DeserializerErrorCode.IFCZIP_FILE_CONTAINS_TOO_MANY_FILES,
 								"Zip files may only contain one IFC-file, this zip-file contains more files");
 					}
-					return size;
+					return numberOfEntitiesRead;
 				} else {
 					throw new DeserializeException(DeserializerErrorCode.IFCZIP_MUST_CONTAIN_EXACTLY_ONE_IFC_FILE,
 							"Zip files must contain exactly one IFC-file, this zip-file seems to have one or more non-IFC files");
@@ -169,7 +179,8 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 				throw new DeserializeException(e);
 			}
 		} else {
-			return read(in, fileSize);
+			read(in, fileSize);
+			return numberOfEntitiesRead;
 		}
 	}
 
@@ -361,6 +372,9 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 			throw new DeserializeException(DeserializerErrorCode.NO_RIGHT_PARENTHESIS_FOUND_IN_RECORD, lineNumber,
 					"No right parenthesis found in line");
 		}
+		
+		this.numberOfEntitiesRead++;
+		
 		long recordNumber = Long.parseLong(line.substring(1, equalSignLocation).trim());
 		String name = line.substring(equalSignLocation + 1, indexOfFirstParen).trim();
 		EClass eClass = (EClass) getPackageMetaData().getEClassifierCaseInsensitive(name);
@@ -395,16 +409,11 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 				if (getPackageMetaData().useForSerialization(eClass, eStructuralFeature)) {
 					if (getPackageMetaData().useForDatabaseStorage(eClass, eStructuralFeature)) {
 						int nextIndex = StringUtils.nextString(realData, lastIndex);
-						if (nextIndex <= lastIndex && eStructuralFeature == Ifc4Package.eINSTANCE
-								.getIfcSurfaceStyleShading_Transparency()) {
-							// IFC4 add1/add2 hack
-							object.set(eStructuralFeature.getName(), 0D);
-							object.set(
-									eStructuralFeature.getEContainingClass()
-											.getEStructuralFeature(eStructuralFeature.getName() + "AsString").getName(),
-									"0");
+						
+						if (nextIndex <= lastIndex && skipOptionalMissingValue(object, eStructuralFeature, eClass)) {
 							continue;
 						}
+						
 						String val = null;
 						try {
 							val = realData.substring(lastIndex, nextIndex - 1).trim();
@@ -496,6 +505,28 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 				metricCollector.collect(line.length(), nrBytes);
 			}
 		}
+	}
+	
+	private boolean skipOptionalMissingValue(VirtualObject object, EStructuralFeature eStructuralFeature, EClass eClass)
+			throws BimserverDatabaseException {
+		if(eStructuralFeature == Ifc4Package.eINSTANCE.getIfcSurfaceStyleShading_Transparency()) {
+			// IFC4 add1/add2 hack
+			object.set(eStructuralFeature.getName(), 0D);
+			object.set(eStructuralFeature.getEContainingClass().getEStructuralFeature(eStructuralFeature.getName() + "AsString").getName(),"0");
+			return true;
+		}
+		
+		if(eStructuralFeature.isRequired()) {
+			return false;
+		}
+		
+		object.eUnset(eStructuralFeature);
+		if (eStructuralFeature.getEType() == EcorePackage.eINSTANCE.getEDouble()) {
+			EStructuralFeature doubleStringFeature = eClass.getEStructuralFeature(eStructuralFeature.getName() + "AsString");
+			object.eUnset(doubleStringFeature);
+		}
+		
+		return true;
 	}
 
 	private void processGuid(VirtualObject object, EStructuralFeature eStructuralFeature, Object converted)
