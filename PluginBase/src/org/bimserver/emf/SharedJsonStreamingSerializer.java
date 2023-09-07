@@ -326,11 +326,11 @@ public class SharedJsonStreamingSerializer implements StreamingReader {
 			}
 			
 			if(additonalDataValue instanceof String) {
-				print("\"" + strAdditionalDataKey + "\": \"" + additonalDataValue + "\"");
+				print(quote(strAdditionalDataKey) + ": " + quote((String) additonalDataValue));
 			} else if (additonalDataValue instanceof HashMap) {
 				HashMap<String, ?> map =  (HashMap<String, ?>) additonalDataValue;
 				
-				print("\"" + strAdditionalDataKey + "\": {\n");
+				print(quote(strAdditionalDataKey) + ": {");
 				
 				boolean bFirst = true;
 				
@@ -344,12 +344,11 @@ public class SharedJsonStreamingSerializer implements StreamingReader {
 					}
 					
 					if(currentValue instanceof Number) {
-						print("\"" + strCurrentKey + "\": " + currentValue.toString() + "\n");
+						print(quote(strCurrentKey) + ": " + currentValue.toString());
 						continue;
 					}
 					
-					String strValue = currentValue.toString().replace("\"", "\\\"");
-					print("\"" + strCurrentKey + "\": \"" + strValue + "\"\n");
+					print(quote(strCurrentKey) + ": " + quote(currentValue.toString()));
 				}
 				
 				print("}");
