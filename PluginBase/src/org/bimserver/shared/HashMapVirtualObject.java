@@ -562,7 +562,7 @@ public class HashMapVirtualObject extends AbstractHashMapVirtualObject implement
 		EClass definedType = (EClass)eReference.getEType();
 		EClass referencedEClass = wrappedVirtualObject.eClass();
 		if (!definedType.isSuperTypeOf(referencedEClass)) {
-			throw new CannotStoreReferenceInFieldException(DeserializerErrorCode.REFERENCED_OBJECT_CANNOT_BE_STORED_IN_THIS_FIELD, "Cannot store a " + referencedEClass.getName() + " in " + eClass().getName() + "." + eReference.getName() + " of type " + definedType.getName());
+			return;
 		}
 		map.put(eReference, wrappedVirtualObject);
 	}
