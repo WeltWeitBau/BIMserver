@@ -113,7 +113,11 @@ public class BerkeleyKeyValueStore implements KeyValueStore {
 		envConfig.setAllowCreate(true);
 		envConfig.setTransactional(useTransactions);
 		envConfig.setTxnTimeout(10, TimeUnit.SECONDS);
-		envConfig.setLockTimeout(2000, TimeUnit.MILLISECONDS);
+		
+		if(!properties.containsKey(EnvironmentConfig.LOCK_TIMEOUT)) {
+			envConfig.setLockTimeout(1, TimeUnit.MILLISECONDS);
+		}
+		
 		envConfig.setConfigParam(EnvironmentConfig.CHECKPOINTER_HIGH_PRIORITY, "true");
 		envConfig.setConfigParam(EnvironmentConfig.CLEANER_THREADS, "5");
 		try {
