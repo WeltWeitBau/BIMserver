@@ -19,9 +19,11 @@ package org.bimserver.web;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Properties;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
@@ -105,6 +107,9 @@ public class WarServerInitializer implements ServletContextListener {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
+		
+		fetchBdbProperties(config);
+		
 		config.setStartEmbeddedWebServer(false);
 		bimServer = new BimServer(config);
 		
@@ -129,6 +134,23 @@ public class WarServerInitializer implements ServletContextListener {
 			LOGGER.error("", e);
 		}
 		servletContext.setAttribute("bimserver", bimServer);
+	}
+	
+	private void fetchBdbProperties(BimServerConfig config) {
+		try {
+			Path bdbPropertiesFile = config.getHomeDir().resolve("bdb.properties");
+			if (Files.exists(bdbPropertiesFile)) {
+				try (InputStream inputStream = Files.newInputStream(bdbPropertiesFile)) {
+					Properties properties = new Properties();
+					properties.load(inputStream);
+					config.setBdbEnvironmentProperties(properties);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} 
+		} catch (Exception e) {
+			// no logger yet
+		}
 	}
 
 	private void setupLogging(Path homeDir) {
