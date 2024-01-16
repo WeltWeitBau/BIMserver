@@ -612,7 +612,12 @@ public interface ServiceInterface extends PublicInterface {
 			@WebParam(name = "type", partName = "addUser.type") SUserType type,
 			@WebParam(name = "selfRegistration", partName = "addUser.selfRegistration") Boolean selfRegistration,
 			@WebParam(name = "resetUrl", partName = "addUser.resetUrl") String resetUrl) throws ServerException, UserException;
-
+	
+	@WebMethod(action = "calculateQuantities")
+	Long calculateQuantities(
+			@WebParam(name = "roid", partName = "calculateQuantities.roid") Long roid,
+			@WebParam(name = "config", partName = "calculateQuantities.config") String config) throws ServerException, UserException;
+	
 	/**
 	 * Change the type of a user
 	 * 

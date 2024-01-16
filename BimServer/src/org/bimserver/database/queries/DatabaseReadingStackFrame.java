@@ -649,7 +649,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		for (long propertyOid : properties) {
 			eClassForOid = databaseSession.getEClassForOid(propertyOid);
 			if (matchesType(eClassForOid, "IfcPropertySingleValue") == false) {
-				LOGGER.info("processPropertySet: Type not supported! - " + eClassForOid.getName());
+				LOGGER.debug("processPropertySet: Type not supported! - " + eClassForOid.getName());
 				continue;
 			}
 			
@@ -724,7 +724,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		for (long quantityOid : quantities) {
 			eClassForOid = databaseSession.getEClassForOid(quantityOid);
 			if (matchesType(eClassForOid, "IfcPhysicalQuantity") == false) {
-				LOGGER.info("processQuantities: Type not supported! - " + eClassForOid.getName());
+				LOGGER.debug("processQuantities: Type not supported! - " + eClassForOid.getName());
 				continue;
 			}
 

@@ -72,6 +72,10 @@ public class ServiceInterfaceAdaptor implements org.bimserver.shared.interfaces.
 		return null;
 	}
 	
+	public java.lang.Long calculateQuantities(java.lang.Long roid, java.lang.String config) throws UserException, ServerException {
+		return null;
+	}
+	
 	public java.lang.String bcfToJson(java.lang.Long extendedDataId) throws UserException, ServerException {
 		return null;
 	}

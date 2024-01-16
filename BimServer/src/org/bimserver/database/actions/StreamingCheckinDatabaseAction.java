@@ -100,6 +100,8 @@ public class StreamingCheckinDatabaseAction extends GenericCheckinDatabaseAction
 	private PackageMetaData packageMetaData;
 	private PluginBundleVersion pluginBundleVersion;
 	private long topicId;
+	
+	private GeometryGenerationReport report;
 
 	public StreamingCheckinDatabaseAction(BimServer bimServer, DatabaseSession databaseSession, AccessMethod accessMethod, long poid, Authorization authorization, String comment, String fileName, InputStream inputStream, StreamingDeserializer deserializer, long fileSize, long newServiceId, PluginBundleVersion pluginBundleVersion, long topicId) {
 		super(bimServer, databaseSession, accessMethod);
@@ -225,7 +227,7 @@ public class StreamingCheckinDatabaseAction extends GenericCheckinDatabaseAction
 				}
 			};
 			
-			GeometryGenerationReport report = null;
+			report = null;
 			if (getBimServer().getServerSettingsCache().getServerSettings().isGenerateGeometryOnCheckin()) {
 				report = new GeometryGenerationReport();
 				report.setOriginalIfcFileName(fileName);
@@ -598,5 +600,9 @@ public class StreamingCheckinDatabaseAction extends GenericCheckinDatabaseAction
 		}
 		LOGGER.info("Deleted " + deleted + " objects in rollback");
 //		getDatabaseSession().getKeyValueStore().sync();
+	}
+	
+	public GeometryGenerationReport getReport() {
+		return report;
 	}
 }

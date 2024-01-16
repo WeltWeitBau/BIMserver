@@ -41,6 +41,9 @@ import org.bimserver.webservices.authorization.Authorization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.weiltweitbau.WwbConfig;
+import de.weiltweitbau.database.actions.WwbLongCalculateQuantitiesAction;
+
 public class LongStreamingCheckinAction extends LongAction<LongCheckinActionKey> {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(LongStreamingCheckinAction.class);
@@ -97,6 +100,8 @@ public class LongStreamingCheckinAction extends LongAction<LongCheckinActionKey>
 				}
 			});
 			this.roid = checkinDatabaseAction.getRevision().getOid();
+			
+			calculateQuantities();
 		} catch (Exception e) {
 			try (DatabaseSession tmpSession = getBimServer().getDatabase().createSession(OperationType.READ_WRITE)) {
 				Project project = tmpSession.get(checkinDatabaseAction.getPoid(), OldQuery.getDefault());
@@ -131,6 +136,24 @@ public class LongStreamingCheckinAction extends LongAction<LongCheckinActionKey>
 				changeActionState(ActionState.FINISHED, "Checkin of " + fileName, 100);
 			}
 			done();
+		}
+	}
+	
+	private void calculateQuantities() {
+		try {
+			if(checkinDatabaseAction.getReport().isCalculateQuantities()) {
+				return;
+			}
+			
+			if(!WwbConfig.readBooleanValue("calculateQuantities", true, getBimServer().getConfig())) {
+				return;
+			}
+			
+			WwbLongCalculateQuantitiesAction action = new WwbLongCalculateQuantitiesAction(this, this.roid);
+			getProgressTopic();
+			action.execute();
+		} catch (Exception e) {
+			LOGGER.error("Could not calculate quantities.", e);
 		}
 	}
 	

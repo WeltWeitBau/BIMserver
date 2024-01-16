@@ -307,6 +307,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 
 import de.weiltweitbau.database.actions.WwbClashDetectorAction;
+import de.weiltweitbau.database.actions.WwbLongCalculateQuantitiesAction;
 import de.weiltweitbau.deserializers.WwbIfcStepStreamingDeserializerPlugin;
 
 public class ServiceImpl extends GenericServiceImpl implements ServiceInterface {
@@ -1474,6 +1475,21 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 			return handleException(e);
 		} finally {
 			session.close();
+		}
+	}
+	
+	@Override
+	public Long calculateQuantities(Long roid, String config) throws ServerException, UserException {
+		requireRealUserAuthentication();
+		
+		try {
+			WwbLongCalculateQuantitiesAction action = new WwbLongCalculateQuantitiesAction(getBimServer(), getCurrentUser(), getAuthorization(), roid);
+			
+			 getBimServer().getLongActionManager().start(action);
+			
+			return action.getProgressTopic().getKey().getId();
+		} catch (Exception e) {
+			return handleException(e);
 		}
 	}
 
