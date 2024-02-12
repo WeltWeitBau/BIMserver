@@ -870,6 +870,16 @@ public interface ServiceInterface extends PublicInterface {
 		@WebParam(name = "roid1", partName = "compare.roid1") Long roid1,
 		@WebParam(name = "roid2", partName = "compare.roid2") Long roid2,
 		@WebParam(name = "rules", partName = "compare.rules") String rules) throws ServerException, UserException;
+	
+	@WebMethod(action = "detectClashesLong")
+	Long detectClashesLong(
+			@WebParam(name = "roid1", partName = "detectClashesLong.roid1") Long roid1,
+			@WebParam(name = "roid2", partName = "detectClashesLong.roid2") Long roid2,
+			@WebParam(name = "rules", partName = "detectClashesLong.rules") String rules) throws ServerException, UserException;
+	
+	@WebMethod(action = "getClashDetectionResult")
+	ObjectNode getClashDetectionResult(
+		@WebParam(name = "topicId", partName = "getClashDetectionResult.topicId") Long topicId) throws ServerException, UserException;
 
 	/**
 	 * Get a revision summary

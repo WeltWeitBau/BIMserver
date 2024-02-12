@@ -2,15 +2,13 @@ package de.weiltweitbau.database.actions.clashes;
 
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.bimserver.emf.IdEObject;
-import org.bimserver.models.geometry.Bounds;
-import org.bimserver.models.geometry.GeometryInfo;
-import org.bimserver.models.geometry.Vector3f;
-import org.eclipse.emf.ecore.EStructuralFeature;
+import org.bimserver.shared.HashMapVirtualObject;
+import org.bimserver.shared.HashMapWrappedVirtualObject;
+
+import de.weiltweitbau.database.actions.clashes.ClashDetector.GeometryModel;
 
 public class Octree {
 	public static final int UPPER_BACK_LEFT = 0;
@@ -92,13 +90,13 @@ public class Octree {
 		}
 	}
 	
-	public void setValue(OctreeValue value, double[] minmax) throws OctreeException {
-		NodeIndex index = getQuadrantIndex(minmax);
+	public void setValue(OctreeValue value) throws OctreeException {
+		NodeIndex index = getQuadrantIndex(value.minmax);
 		
 		if(index == null) {
 			getValues().add(value);
 		} else {
-			getChild(index).setValue(value, minmax);
+			getChild(index).setValue(value);
 		}
 	}
 	
@@ -110,26 +108,39 @@ public class Octree {
 		return values;
 	}
 	
-	private double[] getMinMax(Bounds bounds) {
-		Vector3f min = bounds.getMin();
-		Vector3f max = bounds.getMax();
+	private double[] getMinMax(HashMapWrappedVirtualObject bounds) {
+		HashMapWrappedVirtualObject min = (HashMapWrappedVirtualObject) bounds.get("min");
+		HashMapWrappedVirtualObject max = (HashMapWrappedVirtualObject) bounds.get("max");
 		
-		return new double[] {min.getX(), min.getY(), min.getZ(), max.getX(), max.getY(), max.getZ()};
+		return new double[] {
+				(double) min.get("x"),
+				(double) min.get("y"),
+				(double) min.get("z"),
+				(double) max.get("x"),
+				(double) max.get("y"),
+				(double) max.get("z")};
 	}
 	
-	public void populateOctree(List<IdEObject> products, boolean isModel1, ClashDetectionResults clashDetectionResults) throws OctreeException {
-		for (IdEObject ifcProduct : products) {
-			EStructuralFeature geometryFeature = ifcProduct.eClass().getEStructuralFeature("geometry");
-			GeometryInfo geometryInfo = (GeometryInfo) ifcProduct.eGet(geometryFeature);
+	public void populateOctreeHM(GeometryModel model, boolean isModel1, ClashDetectionResults clashDetectionResults) throws OctreeException {
+		for (HashMapVirtualObject ifcProduct : model.getProducts()) {
+			if(!ifcProduct.has("geometry")) {
+				continue;
+			}
 			
-			if(geometryInfo == null) {
+			HashMapVirtualObject geoInfo = model.getGeoInfo((Long) ifcProduct.get("geometry"));
+			
+			if(geoInfo == null) {
 				continue;
 			}
 			
 			clashDetectionResults.totalObjects++;
 			
-			double[] minmax = getMinMax(geometryInfo.getBounds());
-			setValue(new OctreeValue(ifcProduct, geometryInfo, isModel1), minmax);
+			double[] minmax = getMinMax((HashMapWrappedVirtualObject) geoInfo.get("bounds"));
+			for(int i=0; i<minmax.length; i++) {
+				minmax[i] *= model.getMultiplierToM();
+			}
+			
+			setValue(new OctreeValue(ifcProduct, geoInfo, isModel1, minmax));
 		}
 	}
 	
@@ -199,13 +210,10 @@ public class Octree {
 		return minmax[0] > midX && minmax[3] > midX;
 	}
 	
-	public boolean fitsInside(Bounds bounds) {
-		Vector3f min = bounds.getMin();
-		Vector3f max = bounds.getMax();
-		
-		if(min.getX() >= minX && max.getX() <= maxX
-				&& min.getY() >= minY && max.getY() <= maxY
-				&& min.getZ() >= minZ && max.getZ() <= maxZ) {
+	public boolean fits(double[] minmax) {
+		if(minmax[0] >= minX && minmax[3] <= maxX
+				&& minmax[1] >= minY && minmax[4] <= maxY
+				&& minmax[2] >= minZ && minmax[5] <= maxZ) {
 			return true;
 		}
 		
@@ -273,20 +281,25 @@ public class Octree {
 	}
 	
 	public static class OctreeException extends Exception {
+		private static final long serialVersionUID = -2577292202931680547L;
+
 		public OctreeException(String strMessage) {
 			super(strMessage);
 		}
 	}
 	
 	public static class OctreeValue implements Comparable<OctreeValue> {
-		public final IdEObject ifcProduct;
-		public final GeometryInfo geometryInfo;
-		public final boolean isModel1;
+		public final HashMapVirtualObject ifcProduct;
+		public final HashMapVirtualObject geometryInfo;
 		
-		public OctreeValue(IdEObject ifcProduct, GeometryInfo geometryInfo, boolean isModel1) {
+		public final boolean isModel1;
+		public final double[] minmax;
+		
+		public OctreeValue(HashMapVirtualObject ifcProduct, HashMapVirtualObject geometryInfo, boolean isModel1, double[] minmax) {
 			this.ifcProduct = ifcProduct;
 			this.isModel1 = isModel1;
 			this.geometryInfo = geometryInfo;
+			this.minmax = minmax;
 		}
 
 		@Override

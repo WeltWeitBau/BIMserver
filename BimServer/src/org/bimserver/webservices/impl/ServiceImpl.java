@@ -306,8 +306,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 
+import de.weiltweitbau.database.actions.WwbClashDetectionParameters;
 import de.weiltweitbau.database.actions.WwbClashDetectorAction;
 import de.weiltweitbau.database.actions.WwbLongCalculateQuantitiesAction;
+import de.weiltweitbau.database.actions.WwbLongClashDetectorAction;
 import de.weiltweitbau.deserializers.WwbIfcStepStreamingDeserializerPlugin;
 
 public class ServiceImpl extends GenericServiceImpl implements ServiceInterface {
@@ -381,6 +383,8 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 				LOGGER.error(longStreamingDownloadAction.getErrors().get(0));
 				throw new ServerException(longStreamingDownloadAction.getErrors().get(0));
 			}
+//		} else if(longAction instanceof WwbLongClashDetectorAction) {
+//			return getClashDetectionDownloadData((WwbLongClashDetectorAction) longAction);
 		} else {
 			LongDownloadOrCheckoutAction longDownloadAction = (LongDownloadOrCheckoutAction) longAction;
 			try {
@@ -398,6 +402,20 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 			}
 		}
 	}
+	
+//	private SDownloadResult getClashDetectionDownloadData(WwbLongClashDetectorAction longAction) throws ServerException {
+//		if (longAction.getErrors().isEmpty()) {
+//			try {
+//				return longAction.getCheckoutResult();
+//			} catch (Exception e) {
+//				LOGGER.error("", e);
+//				throw new ServerException(e);
+//			}
+//		} else {
+//			LOGGER.error(longAction.getErrors().get(0));
+//			throw new ServerException(longAction.getErrors().get(0));
+//		}
+//	}
 
 	public Long download(DownloadParameters downloadParameters, Boolean sync) throws ServerException, UserException {
 		requireAuthenticationAndRunningServer();
@@ -1834,9 +1852,43 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 
 		try (DatabaseSession session = getBimServer().getDatabase().createSession(OperationType.READ_ONLY);) {
 			BimDatabaseAction<ObjectNode> action = new WwbClashDetectorAction(getBimServer(), session,
-					getInternalAccessMethod(), getAuthorization(), -1, roid1, roid2, rules);
+					getInternalAccessMethod(), getAuthorization(), -1, roid1, roid2, rules, null);
 			
 			return session.executeAndCommitAction(action);
+		} catch (Exception e) {
+			return handleException(e);
+		}
+	}
+	
+	@Override
+	public Long detectClashesLong(Long roid1, Long roid2, String rules) throws ServerException, UserException {
+		requireRealUserAuthentication();
+		
+		try {
+			WwbClashDetectionParameters params = new WwbClashDetectionParameters(roid1, roid2, rules, getBimServer(),
+					getInternalAccessMethod(), null, getCurrentUser(), getAuthorization(), -1);
+			WwbLongClashDetectorAction action = new WwbLongClashDetectorAction(params);
+			
+			 getBimServer().getLongActionManager().start(action);
+			
+			return action.getProgressTopic().getKey().getId();
+		} catch (Exception e) {
+			return handleException(e);
+		}
+	}
+	
+	@Override
+	public ObjectNode getClashDetectionResult(Long topicId) throws ServerException, UserException {
+		requireRealUserAuthentication();
+		
+		try {
+			LongAction<?> longAction = getBimServer().getLongActionManager().getLongAction(topicId);
+			if (longAction instanceof WwbLongClashDetectorAction == false) {
+				throw new UserException("No data found for topicId " + topicId);
+			}
+			
+			WwbLongClashDetectorAction clashDetectorAction = (WwbLongClashDetectorAction) longAction;
+			return clashDetectorAction.getResult();
 		} catch (Exception e) {
 			return handleException(e);
 		}

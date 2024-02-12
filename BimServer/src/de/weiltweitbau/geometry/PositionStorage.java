@@ -48,15 +48,17 @@ public class PositionStorage {
 	}
 	
 	public int put(double[] position) {
-		Integer foundIndex = positions.get(position);
+		Integer index = positions.get(position);
 		
-		if(foundIndex != null) {
-			return foundIndex.intValue();
+		if(index != null) {
+			return index.intValue();
 		}
+		
+		index = positions.size();
 		
 		positions.put(position, index);
 		
-		return index++;
+		return index;
 	}
 	
 	public int size() {

@@ -674,7 +674,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		String name = (String) property.get("Name");
 
 		if (propertiesToInclude.contains(name) == false) {
-			if(propertiesToIncludeAll.contains(name) == false) {
+			if(propertiesToIncludeAll == null || propertiesToIncludeAll.contains(name) == false) {
 				return;
 			}
 			

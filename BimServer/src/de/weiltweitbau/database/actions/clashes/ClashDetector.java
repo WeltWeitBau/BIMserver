@@ -1,28 +1,31 @@
 package de.weiltweitbau.database.actions.clashes;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.DoubleBuffer;
-import java.nio.IntBuffer;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.bimserver.BimserverDatabaseException;
+import org.bimserver.database.queries.QueryObjectProvider;
 import org.bimserver.emf.IdEObject;
 import org.bimserver.emf.IfcModelInterface;
-import org.bimserver.emf.ModelMetaData;
-import org.bimserver.emf.PackageMetaData;
-import org.bimserver.interfaces.objects.SVector3f;
 import org.bimserver.models.geometry.Bounds;
-import org.bimserver.models.geometry.GeometryData;
 import org.bimserver.models.geometry.GeometryInfo;
-import org.eclipse.emf.ecore.EClass;
+import org.bimserver.models.geometry.Vector3f;
+import org.bimserver.shared.HashMapVirtualObject;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.slf4j.LoggerFactory;
 
+import de.weiltweitbau.database.actions.WwbLongClashDetectorAction.ClashDetectionProgressHandler;
 import de.weiltweitbau.database.actions.clashes.ClashDetectorRules.Combinations;
 import de.weiltweitbau.database.actions.clashes.Octree.OctreeException;
 import de.weiltweitbau.database.actions.clashes.Octree.OctreeValue;
+import de.weiltweitbau.geometry.BooleanMeshOperations;
+import de.weiltweitbau.geometry.Mesh;
+import de.weiltweitbau.geometry.Triangle;
 
 public class ClashDetector {
 	private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(ClashDetector.class);
@@ -31,9 +34,7 @@ public class ClashDetector {
 		private String type1;
 		private String type2;
 
-		// TODO: EClass verwenden
 		public Combination(String type1, String type2) {
-			// Make canonical
 			if (type1.compareTo(type2) > 0) {
 				this.type1 = type1;
 				this.type2 = type2;
@@ -81,26 +82,33 @@ public class ClashDetector {
 			return true;
 		}
 	}
+	
+	private ClashDetectionProgressHandler progressHandler;
+	
+	private ClashDetectionResults clashDetectionResults;
 
-	private IfcModelInterface model1;
-	private IfcModelInterface model2;
 	private ClashDetectorRules rules;
-	private List<IdEObject> products1;
-	private List<IdEObject> products2;
+	
+	private GeometryModel geomtryModel1;
+	private GeometryModel geomtryModel2;
+	
 	private Set<Combination> combinationToIgnore = new HashSet<>();
 	private Set<Combination> combinationToCheck = new HashSet<>();
 	private Set<String> typesToOnlyCheckWithOwnType = new HashSet<>();
 	private double epsilon;
 	private final boolean bCheckAgainstSelf;
 	private Set<Long> checkedOids;
-	private ClashDetectionResults clashDetectionResults;
-
-	public ClashDetector(IfcModelInterface model1, IfcModelInterface model2, ClashDetectorRules rules) {
-		this.model1 = model1;
-		this.model2 = model2;
+	
+	private Map<Long, String> types;
+	private Map<Long, Mesh> meshes;
+	
+	public ClashDetector(GeometryModel model1, GeometryModel model2, ClashDetectorRules rules, ClashDetectionProgressHandler progressHandler, boolean bCheckAgainstSelf) {
+		this.geomtryModel1 = model1;
+		this.geomtryModel2 = model2;
 		this.rules = rules;
+		this.progressHandler = progressHandler;
 		
-		this.bCheckAgainstSelf = model1.getModelMetaData().getName().equals(model2.getModelMetaData().getName());
+		this.bCheckAgainstSelf = bCheckAgainstSelf;
 	}
 
 	private void configureRules() {
@@ -130,6 +138,9 @@ public class ClashDetector {
 		addCombinations(rules.getTypesToCheck(), combinationToCheck);
 		
 		this.epsilon = rules.getEpsilon();
+		
+		types = new HashMap<>();
+		meshes = new HashMap<>();
 	}
 
 	private void addCombinations(Combinations[] combinations, Set<Combination> target) {
@@ -139,42 +150,45 @@ public class ClashDetector {
 			}
 		}
 	}
-
-	private List<IdEObject> fetchProducts(IfcModelInterface model) {
-		PackageMetaData packageMetaData = model.getPackageMetaData();
-		EClass ifcProductClass = packageMetaData.getEClass("IfcProduct");
-		return model.getAllWithSubTypes(ifcProductClass);
-	}
-
-	public ClashDetectionResults findClashes() throws Exception {
+	
+	public ClashDetectionResults findClashesHM() throws Exception {
 		configureRules();
-		products1 = fetchProducts(model1);
+		fetchTypes(geomtryModel1);
+		
+		if(!bCheckAgainstSelf) {
+			fetchTypes(geomtryModel2);
+		}
 
 		checkedOids = new HashSet<Long>();
-
-		if (bCheckAgainstSelf) {
-			products2 = products1;
-		} else {
-			products2 = fetchProducts(model2);
-		}
 
 		clashDetectionResults = new ClashDetectionResults();
 		
 		findClashesUsingOctree();
-		
-//		findClashesUsingBruteForce();
 
 		LOGGER.info("Duration in Milliseconds: " + (System.nanoTime() - clashDetectionResults.start)/1000000);
 		LOGGER.info("With geometry: " + clashDetectionResults.nrWithGeometry);
 		LOGGER.info("Without geometry: " + clashDetectionResults.nrWithoutGeometry);
+		LOGGER.info("With open geometry: " + clashDetectionResults.nrWithOpenGeometry);
 		LOGGER.info("Not enough data: " + clashDetectionResults.notEnoughData);
 		LOGGER.info("Clashes: " + clashDetectionResults.size());
 
 		return clashDetectionResults;
 	}
 	
+	private void fetchTypes(GeometryModel model) {
+		for(HashMapVirtualObject ifcProduct : model.getProducts()) {
+			String type = getType(ifcProduct);
+			
+			if(type == null) {
+				type = "";
+			}
+			
+			types.put(ifcProduct.getOid(), type);
+		}
+	}
+	
 	private void findClashesUsingOctree() throws Exception {
-		Octree octree = createOctree();
+		Octree octree = createOctreeHM();
 		octree.traverseBreadthFirst((node) -> {
 			for (OctreeValue value : node.getValues()) {
 				if (!value.isModel1) {
@@ -186,6 +200,10 @@ public class ClashDetector {
 				if (System.nanoTime() - clashDetectionResults.lastDump > 1000000000L) {
 					LOGGER.info((clashDetectionResults.checkedObjects * 100f / clashDetectionResults.totalObjects) + "%");
 					clashDetectionResults.lastDump = System.nanoTime();
+					
+					if(progressHandler != null) {
+						progressHandler.progress(clashDetectionResults.checkedObjects, clashDetectionResults.totalObjects);
+					}
 				}
 
 				checkNodeValue1(node, value);
@@ -195,67 +213,7 @@ public class ClashDetector {
 		});
 		
 		clashDetectionResults.nrWithGeometry = clashDetectionResults.checkedObjects;
-		clashDetectionResults.nrWithoutGeometry = products1.size() - clashDetectionResults.nrWithGeometry;
-	}
-	
-	private void findClashesUsingBruteForce() {
-		for (IdEObject ifcProduct1 : products1) {
-			if (bCheckAgainstSelf) {
-				checkedOids.add(ifcProduct1.getOid());
-			}
-
-			EStructuralFeature geometryFeature = ifcProduct1.eClass().getEStructuralFeature("geometry");
-			GeometryInfo geometryInfo1 = (GeometryInfo) ifcProduct1.eGet(geometryFeature);
-			if (geometryInfo1 == null) {
-				clashDetectionResults.nrWithoutGeometry++;
-				continue;
-			}
-
-			clashDetectionResults.nrWithGeometry++;
-
-			for (IdEObject ifcProduct2 : products2) {
-				if (System.nanoTime() - clashDetectionResults.lastDump > 5000000000L) {
-					long totalTime = System.nanoTime() - clashDetectionResults.start;
-					LOGGER.info((clashDetectionResults.totalTimeTriangles * 100f / totalTime) + "%");
-					clashDetectionResults.lastDump = System.nanoTime();
-				}
-
-				if (bCheckAgainstSelf && checkedOids.contains(ifcProduct2.getOid())) {
-					continue;
-				}
-
-				if (!shouldCheck(ifcProduct1, ifcProduct2)) {
-					continue;
-				}
-
-				GeometryInfo geometryInfo2 = (GeometryInfo) ifcProduct2.eGet(geometryFeature);
-				if (geometryInfo2 == null) {
-					continue;
-				}
-
-				if (!boundingBoxesClash(geometryInfo1, geometryInfo2)) {
-					continue;
-				}
-
-				if (!enoughData(geometryInfo1, geometryInfo2)) {
-					clashDetectionResults.notEnoughData++;
-					continue;
-				}
-
-				long startTriangles = System.nanoTime();
-				if (trianglesClash(geometryInfo1, geometryInfo2)) {
-					clashDetectionResults.addLeft(ifcProduct1, ifcProduct2);
-
-					if (bCheckAgainstSelf) {
-						clashDetectionResults.addLeft(ifcProduct2, ifcProduct1);
-					} else {
-						clashDetectionResults.addRight(ifcProduct2, ifcProduct1);
-					}
-				}
-				long endTriangles = System.nanoTime();
-				clashDetectionResults.totalTimeTriangles += (endTriangles - startTriangles);
-			}
-		}
+		clashDetectionResults.nrWithoutGeometry = geomtryModel1.products.size() - clashDetectionResults.nrWithGeometry;
 	}
 	
 	private void checkNodeValue1(Octree node, OctreeValue value1) {
@@ -263,10 +221,10 @@ public class ClashDetector {
 			checkedOids.add(value1.ifcProduct.getOid());
 		}
 		
-		Bounds bounds1 = value1.geometryInfo.getBounds();
+		double[] minmax = value1.minmax;
 
 		node.traverseUpAndBreadthFirstDown((childNode -> {
-			if(!childNode.fitsInside(bounds1)) {
+			if(!childNode.fits(minmax)) {
 				return false;
 			}
 			
@@ -283,8 +241,8 @@ public class ClashDetector {
 	}
 	
 	private void checkNodeValue1AgainstNodeValue2(OctreeValue value1, OctreeValue value2) {
-		IdEObject ifcProduct1 = value1.ifcProduct;
-		IdEObject ifcProduct2 = value2.ifcProduct;
+		HashMapVirtualObject ifcProduct1 = value1.ifcProduct;
+		HashMapVirtualObject ifcProduct2 = value2.ifcProduct;
 		
 		if (bCheckAgainstSelf && checkedOids.contains(ifcProduct2.getOid())) {
 			return;
@@ -294,54 +252,99 @@ public class ClashDetector {
 			return;
 		}
 
-		GeometryInfo geometryInfo1 = value1.geometryInfo;
-		GeometryInfo geometryInfo2 = value2.geometryInfo;
-
-		if (!boundingBoxesClash(geometryInfo1, geometryInfo2)) {
+		if (!boundingBoxesClash(value1.minmax, value2.minmax)) {
 			return;
 		}
 
-		if (!enoughData(geometryInfo1, geometryInfo2)) {
+		if (!enoughData(value1, value2)) {
 			clashDetectionResults.notEnoughData++;
 			return;
 		}
+		
+		Mesh mesh1 = getMesh(value1);
+		Mesh mesh2 = getMesh(value2);
 
-//		long startTriangles = System.nanoTime();
-		if (trianglesClash(geometryInfo1, geometryInfo2)) {
-			clashDetectionResults.addLeft(ifcProduct1, ifcProduct2);
+		if (!meshesClash(mesh1, mesh2)) {
+			return;
+		}
+		
+		boolean bComputeVolume = rules.isComputeVolumes()
+				|| rules.getMinClashHorizontal() > 0
+				|| rules.getMinClashVertical() > 0;
+				
+		if(bComputeVolume && mesh1.isClosed() && mesh2.isClosed()) {
+			ClashVolume clashVolume = computeClashVolume(mesh1, mesh2);
 			
-			if(bCheckAgainstSelf) {
-				clashDetectionResults.addLeft(ifcProduct2, ifcProduct1);
-			} else {
-				clashDetectionResults.addRight(ifcProduct2, ifcProduct1);
+			if(clashVolume != null) {
+				if(clashVolume.getVolume() < rules.getMinClashVolume()
+					|| clashVolume.getWidth() < rules.getMinClashHorizontal()
+					|| clashVolume.getHeight() < rules.getMinClashVertical()) {
+						return;
+				}
+				
+				if(!rules.isComputeVolumes()) {
+					clashVolume.clearIntersection();
+				}
+				
+				clashDetectionResults.addClashVolume(ifcProduct1.getOid(), ifcProduct2.getOid(), clashVolume);
+			}
+		} else {
+			
+		}
+		
+		if(!mesh1.isClosed()) {
+			
+		}
+		
+		clashDetectionResults.addLeft(ifcProduct1, ifcProduct2);
+		
+		if(bCheckAgainstSelf) {
+			clashDetectionResults.addLeft(ifcProduct2, ifcProduct1);
+		} else {
+			clashDetectionResults.addRight(ifcProduct2, ifcProduct1);
+		}
+	}
+	
+	private Mesh getMesh(OctreeValue value) {
+		Mesh mesh = meshes.get(value.geometryInfo.getOid());
+		
+		if(mesh == null) {
+			GeometryModel model = value.isModel1 ? geomtryModel1 : geomtryModel2;
+			
+			HashMapVirtualObject geometryData = model.getGeoData((Long) value.geometryInfo.get("data"));
+			byte[] indices = (byte[]) model.getBuffer((Long) geometryData.get("indices")).get("data");
+			byte[] vertices = (byte[]) model.getBuffer((Long) geometryData.get("vertices")).get("data");
+			byte[] transformation = (byte[]) value.geometryInfo.get("transformation");
+			
+			mesh = Mesh.fromByteArrays(indices, vertices, transformation, model.getMultiplierToM());
+			meshes.put(value.geometryInfo.getOid(), mesh);
+			
+			if(!mesh.isClosed()) {
+				clashDetectionResults.nrWithOpenGeometry++;
 			}
 		}
+		
+		return mesh;
 	}
-
-	private boolean enoughData(GeometryInfo geometryInfo1, GeometryInfo geometryInfo2) {
-		GeometryData data1 = geometryInfo1.getData();
-		GeometryData data2 = geometryInfo2.getData();
-
-		if (data1 == null || data2 == null) {
+	
+	private boolean enoughData(OctreeValue value1, OctreeValue value2) {
+		if(value1.geometryInfo == null || value2.geometryInfo == null) {
 			return false;
 		}
-		if (data1.getIndices() == null || data2.getIndices() == null) {
-			return false;
-		}
-		if (data1.getIndices().getData() == null || data2.getIndices().getData() == null) {
-			return false;
-		}
+		
+		// TODO
+		
 		return true;
 	}
-
-	private boolean shouldCheck(IdEObject ifcProduct1, IdEObject ifcProduct2) {
+	
+	private boolean shouldCheck(HashMapVirtualObject ifcProduct1, HashMapVirtualObject ifcProduct2) {
 		if (ifcProduct1.getOid() == ifcProduct2.getOid()) {
 			// As this is forbidden in Clash class, we do that early here
 			return false;
 		}
 
-		String type1 = ifcProduct1.eClass().getName();
-		String type2 = ifcProduct2.eClass().getName();
+		String type1 = types.get(ifcProduct1.getOid());
+		String type2 = types.get(ifcProduct2.getOid());
 		Combination combination = new Combination(type1, type2);
 
 		if (combinationToCheck != null && !combinationToCheck.isEmpty() && !combinationToCheck.contains(combination)) {
@@ -359,55 +362,59 @@ public class ClashDetector {
 
 		return true;
 	}
+	
+	private String getType(HashMapVirtualObject ifcProduct) {
+		if(!rules.hasProperty() && !rules.hasPropertySet()) {
+			return ifcProduct.eClass().getName();
+		}
+		
+		String property = rules.getProperty();
+		String propertySet = rules.getPropertySet();
+		
+		if(ifcProduct.getAdditionalData() == null || ifcProduct.getAdditionalData().get("includedProperties") == null) {
+			return "";
+		}
+		
+		HashMap<String, String> includedProperties = (HashMap<String, String>) ifcProduct.getAdditionalData().get("includedProperties");
+		return includedProperties.get(propertySet + ":" + property);
+	}
 
-	private boolean trianglesClash(GeometryInfo geometryInfo1, GeometryInfo geometryInfo2) {
-		GeometryData data1 = geometryInfo1.getData();
-		GeometryData data2 = geometryInfo2.getData();
-
-		if (data1 == null || data2 == null) {
+	private boolean meshesClash(Mesh mesh1, Mesh mesh2) {
+		if (mesh1 == null || mesh2 == null) {
 			return false;
 		}
-		if (data1.getIndices() == null || data2.getIndices() == null) {
+
+		return mesh1.forSomeTriangles(triangle -> triangleClashesWithMesh(triangle, mesh2));
+	}
+	
+	private ClashVolume computeClashVolume(Mesh mesh1, Mesh mesh2) {
+		Mesh intersection;
+		try {
+			intersection = BooleanMeshOperations.intersection(mesh1, mesh2);
+			return new ClashVolume(intersection);
+		} catch (Throwable e) {
+			clashDetectionResults.clashVolumeErrors++;
+			LOGGER.error("Could not compute clash volume!", e);
+		}
+		
+		return null;
+	}
+	
+	private boolean triangleClashesWithMesh(Triangle triangle, Mesh mesh) {
+		return mesh.forSomeTriangles(triangle2 -> triangleClashesWithTriangle(triangle, triangle2));
+	}
+	
+	private boolean triangleClashesWithTriangle(Triangle triangle1, Triangle triangle2) {
+		if (!triangle1.intersects(triangle2, epsilon, epsilon)) {
 			return false;
 		}
-		if (data1.getIndices().getData() == null || data2.getIndices().getData() == null) {
-			return false;
-		}
-
-		IntBuffer indices1 = getIntBuffer(data1.getIndices().getData());
-		DoubleBuffer vertices1 = getDoubleBuffer(data1.getVertices().getData());
-
-		IntBuffer indices2 = getIntBuffer(data2.getIndices().getData());
-		DoubleBuffer vertices2 = getDoubleBuffer(data2.getVertices().getData());
-
-		DoubleBuffer transformation1 = getDoubleBuffer(geometryInfo1.getTransformation());
-		double[] transformationArray1 = new double[16];
-		for (int i = 0; i < 16; i++) {
-			transformationArray1[i] = transformation1.get();
-		}
-
-		DoubleBuffer transformation2 = getDoubleBuffer(geometryInfo2.getTransformation());
-		double[] transformationArray2 = new double[16];
-		for (int i = 0; i < 16; i++) {
-			transformationArray2[i] = transformation2.get();
-		}
-
-		for (int i = 0; i < indices1.capacity(); i += 3) {
-			Triangle triangle = new Triangle(indices1, vertices1, i, transformationArray1);
-
-//			if (!triangleInBoundingBox(triangle, geometryInfo2)) {
-//				continue;
-//			}
-
-			for (int j = 0; j < indices2.capacity(); j += 3) {
-				Triangle triangle2 = new Triangle(indices2, vertices2, j, transformationArray2);
-
-				if (triangle.intersects(triangle2, epsilon, epsilon)) {
-					return true;
-				}
-			}
-		}
-		return false;
+		
+		return true;
+	}
+	
+	private boolean triangleIntersectsBoundingBox(Triangle triangle, GeometryInfo geometryInfo2) {
+		// TODO
+		return true;
 	}
 
 	private boolean triangleInBoundingBox(Triangle triangle, GeometryInfo geometryInfo2) {
@@ -424,21 +431,6 @@ public class ClashDetector {
 		return false;
 	}
 
-	private DoubleBuffer getDoubleBuffer(byte[] input) {
-		ByteBuffer vertexBuffer = ByteBuffer.wrap(input);
-		vertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
-		DoubleBuffer doubleBuffer = vertexBuffer.asDoubleBuffer();
-		doubleBuffer.position(0);
-		return doubleBuffer;
-	}
-
-	private IntBuffer getIntBuffer(byte[] input) {
-		ByteBuffer indicesBuffer = ByteBuffer.wrap(input);
-		indicesBuffer.order(ByteOrder.LITTLE_ENDIAN);
-		IntBuffer indicesIntBuffer = indicesBuffer.asIntBuffer();
-		return indicesIntBuffer;
-	}
-
 	private boolean boundingBoxesClash(GeometryInfo geometryInfo1, GeometryInfo geometryInfo2) {
 		return (geometryInfo1.getBounds().getMax().getX() > geometryInfo2.getBounds().getMin().getX()
 				&& geometryInfo1.getBounds().getMin().getX() < geometryInfo2.getBounds().getMax().getX()
@@ -448,29 +440,128 @@ public class ClashDetector {
 				&& geometryInfo1.getBounds().getMin().getZ() < geometryInfo2.getBounds().getMax().getZ());
 	}
 	
-	private Octree createOctree() throws OctreeException {
-		ModelMetaData meta1 = model1.getModelMetaData();
-		SVector3f min1 = meta1.getMinBounds();
-		SVector3f max1 = meta1.getMaxBounds();
+	private boolean boundingBoxesClash(double[] minmax1, double[] minmax2) {
+		return (minmax1[3] > minmax2[0]
+				&& minmax1[0] < minmax2[3]
+				&& minmax1[4] > minmax2[1]
+				&& minmax1[1] < minmax2[4]
+				&& minmax1[5] > minmax2[2]
+				&& minmax1[2] < minmax2[5]);
+	}
+	
+	private Octree createOctreeHM() throws OctreeException {
+		Vector3f min1 = geomtryModel1.getBounds().getMin();
+		Vector3f max1 = geomtryModel1.getBounds().getMax();
 		
-		ModelMetaData meta2 = model2.getModelMetaData();
-		SVector3f min2 = meta2.getMinBounds();
-		SVector3f max2 = meta2.getMaxBounds();
+		Vector3f min2 = geomtryModel2.getBounds().getMin();
+		Vector3f max2 = geomtryModel2.getBounds().getMax();
 		
 		double[] minmax = new double[] {
-				Math.min(min1.getX(), min2.getX()),
-				Math.min(min1.getY(), min2.getY()),
-				Math.min(min1.getZ(), min2.getZ()),
-				Math.max(max1.getX(), max2.getX()),
-				Math.max(max1.getY(), max2.getY()),
-				Math.max(max1.getZ(), max2.getZ()),
+				Math.min(min1.getX() * geomtryModel1.getMultiplierToM(), min2.getX() * geomtryModel2.getMultiplierToM()),
+				Math.min(min1.getY() * geomtryModel1.getMultiplierToM(), min2.getY() * geomtryModel2.getMultiplierToM()),
+				Math.min(min1.getZ() * geomtryModel1.getMultiplierToM(), min2.getZ() * geomtryModel2.getMultiplierToM()),
+				Math.max(max1.getX() * geomtryModel1.getMultiplierToM(), max2.getX() * geomtryModel2.getMultiplierToM()),
+				Math.max(max1.getY() * geomtryModel1.getMultiplierToM(), max2.getY() * geomtryModel2.getMultiplierToM()),
+				Math.max(max1.getZ() * geomtryModel1.getMultiplierToM(), max2.getZ() * geomtryModel2.getMultiplierToM()),
 		};
 		
 		Octree octree = new Octree(minmax);
 		
-		octree.populateOctree(products1, true, clashDetectionResults);
-		octree.populateOctree(products2, false, clashDetectionResults);
+		octree.populateOctreeHM(geomtryModel1, true, clashDetectionResults);
+		octree.populateOctreeHM(geomtryModel2, false, clashDetectionResults); // TODO: nur wenn unterschiedliche?
 		
 		return octree;
+	}
+	
+	public int getProgress() {
+		if(clashDetectionResults == null) {
+			return -1;
+		}
+		
+		return (clashDetectionResults.checkedObjects / clashDetectionResults.totalObjects) * 100;
+	}
+	
+	public static class GeometryModel {
+		private Map<Long, HashMapVirtualObject> products = new HashMap<>();
+		private Map<Long, HashMapVirtualObject> geoInfos = new HashMap<>();
+		private Map<Long, HashMapVirtualObject> geoDatas = new HashMap<>();
+		private Map<Long, HashMapVirtualObject> buffers = new HashMap<>();
+		
+		private Bounds bounds = null;
+		
+		private double multiplierToM = 1;
+		
+		public void setBounds(Bounds bounds) {
+			this.bounds = bounds;
+		}
+		
+		public Bounds getBounds() {
+			return bounds;
+		}
+		
+		public static GeometryModel fromQueryProvider(QueryObjectProvider queryProvider, double multiplierToM) throws BimserverDatabaseException {
+			GeometryModel model = new GeometryModel();
+			
+			model.multiplierToM = multiplierToM;
+
+			HashMapVirtualObject current = queryProvider.next();
+			while (current != null) {
+				switch ((String) current.eClass().getName()) {
+				case "GeometryInfo":
+					model.addGeoInfo(current);
+					break;
+				case "GeometryData":
+					model.addGeoData(current);
+					break;
+				case "Buffer":
+					model.addBuffer(current);
+					break;
+
+				default:
+					model.addProduct(current);
+					break;
+				}
+
+				current = queryProvider.next();
+			}
+
+			return model;
+		}
+		
+		public void addProduct(HashMapVirtualObject product) {
+			products.put(product.getOid(), product);
+		}
+		
+		public Collection<HashMapVirtualObject> getProducts() {
+			return products.values();
+		}
+		
+		public void addGeoInfo(HashMapVirtualObject geoInfo) {
+			geoInfos.put(geoInfo.getOid(), geoInfo);
+		}
+		
+		public HashMapVirtualObject getGeoInfo(long oid) {
+			return geoInfos.get(oid);
+		}
+		
+		public void addGeoData(HashMapVirtualObject geoData) {
+			geoDatas.put(geoData.getOid(), geoData);
+		}
+		
+		public HashMapVirtualObject getGeoData(long oid) {
+			return geoDatas.get(oid);
+		}
+		
+		public void addBuffer(HashMapVirtualObject buffer) {
+			buffers.put(buffer.getOid(), buffer);
+		}
+		
+		public HashMapVirtualObject getBuffer(long oid) {
+			return buffers.get(oid);
+		}
+		
+		public double getMultiplierToM() {
+			return multiplierToM;
+		}
 	}
 }

@@ -13,8 +13,11 @@ import java.util.function.Function;
 import org.bimserver.geometry.Vector;
 import org.bimserver.models.geometry.GeometryData;
 import org.bimserver.models.geometry.GeometryInfo;
+import org.slf4j.LoggerFactory;
 
 public class Mesh {
+	private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(Mesh.class);
+	
 	private IntBuffer indices;
 	private DoubleBuffer vertices;
 	private DoubleBuffer normals;
@@ -45,10 +48,55 @@ public class Mesh {
 	}
 	
 	public static Mesh fromByteArrays(byte[] _indices, byte[] _vertices) {
+		return fromByteArrays(_indices, _vertices, null, 1);
+	}
+	
+	public static Mesh fromByteArrays(byte[] _indices, byte[] _vertices, byte[] _transformation, double scale) {
 		IntBuffer indices = getIntBuffer(_indices);
 		DoubleBuffer vertices = getDoubleBuffer(_vertices);
+		double[] transformationArray = getTransformation(_transformation);
+		
+		// TODO: do it right
+//		Matrix.scaleM(transformationArray, 0, scale, scale, scale);
+		
+//		double[] scaleArray = {
+//				scale, 0, 0, 0,
+//				0, scale, 0, 0,
+//				0, 0, scale, 0,
+//				0, 0, 0, 1
+//		};
+//		
+//		Matrix.multiplyMM(transformationArray, 0, scaleArray, 0, transformationArray, 0);
 
-		return new Mesh(indices, vertices, null);
+//		return new Mesh(indices, vertices, transformationArray);
+		
+		Mesh mesh = new Mesh(indices, vertices, transformationArray);
+		
+		mesh.forEachTriangle((triangle) -> {
+			triangle.getVertex1()[0] *= scale;
+			triangle.getVertex1()[1] *= scale;
+			triangle.getVertex1()[2] *= scale;
+			triangle.getVertex2()[0] *= scale;
+			triangle.getVertex2()[1] *= scale;
+			triangle.getVertex2()[2] *= scale;
+			triangle.getVertex3()[0] *= scale;
+			triangle.getVertex3()[1] *= scale;
+			triangle.getVertex3()[2] *= scale;
+		});
+		
+		return mesh;
+	}
+	
+	private static double[] getTransformation(byte[] _transformation) {
+		if(_transformation == null) {
+			return null;
+		}
+		
+		DoubleBuffer transformation = getDoubleBuffer(_transformation);
+		double[] transformationArray = new double[transformation.limit()];
+		transformation.get(transformationArray);
+		
+		return transformationArray;
 	}
 	
 	private static DoubleBuffer getDoubleBuffer(byte[] input) {
@@ -89,7 +137,9 @@ public class Mesh {
 	}
 	
 	public boolean computeIsClosed() {
-		PositionStorage store = new PositionStorage(0.00000001);
+		PositionStorage store = new PositionStorage(0.000001);
+		
+		indices = IntBuffer.allocate(getTriangleCount() * 3);
 		
 		for(int i=0; i<getTriangleCount(); i++) {
 			Triangle triangle = getTriangle(i);
@@ -112,13 +162,17 @@ public class Mesh {
 		HashMap<Integer, Set<Integer>> startEndMap = new HashMap<>();
 		
 		for(int i=0; i<indices.capacity(); i+=3) {
-			int index0 = indices.get(i);
-			int index1 = indices.get(i + 1);
-			int index2 = indices.get(i + 2);
-			
-			addOrRemoveEdge(index0, index1, startEndMap);
-			addOrRemoveEdge(index1, index2, startEndMap);
-			addOrRemoveEdge(index2, index0, startEndMap);
+			try {
+				int index0 = indices.get(i);
+				int index1 = indices.get(i + 1);
+				int index2 = indices.get(i + 2);
+				addOrRemoveEdge(index0, index1, startEndMap);
+				addOrRemoveEdge(index1, index2, startEndMap);
+				addOrRemoveEdge(index2, index0, startEndMap);
+			} catch (Exception e) {
+				LOGGER.error("Mesh is degenerated!", e);
+				return false;
+			}
 		}
 		
 		return startEndMap.isEmpty();
@@ -167,9 +221,9 @@ public class Mesh {
 	}
 	
 	public double computeVolume() {
-		if(!isClosed()) {
-			return 0;
-		}
+//		if(!isClosed()) {
+//			return 0;
+//		}
 		
 		double volume = 0;
 		

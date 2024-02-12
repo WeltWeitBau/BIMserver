@@ -2,27 +2,83 @@ package de.weiltweitbau.database.actions.clashes;
 
 public class ClashDetectorRules {
 	private double epsilon = 0.00001;
+	private double minClashVolume = -1;
+	private double minClashHorizontal = -1;
+	private double minClashVertical = -1;
 	private boolean skipDefaultRules;
+	private boolean computeVolumes;
+	private String property;
+	private String propertySet;
 	private String[] onlyCheckWithOwnType;
 	private Combinations[] typesToIgnore;
 	private Combinations[] typesToCheck;
 	
 	public ClashDetectorRules() {
-		//
-	}
-	
-	public ClashDetectorRules(boolean skipDefaultRules, String[] onlyCheckWithOwnType, Combinations[] typesToIgnore) {
-		this.skipDefaultRules = skipDefaultRules;
-		this.onlyCheckWithOwnType = onlyCheckWithOwnType;
-		this.typesToIgnore = typesToIgnore;
+		// Default constructor
 	}
 
 	public boolean isSkipDefaultRules() {
 		return skipDefaultRules;
 	}
 
+	public String getProperty() {
+		return property;
+	}
+	
+	public boolean hasProperty() {
+		return property != null && !property.isEmpty();
+	}
+
+	public void setProperty(String property) {
+		this.property = property;
+	}
+	
+	public boolean matchesProperty(String value) {
+		if(value == null || value.isEmpty()) {
+			return false;
+		}
+		
+		if(property == null || property.isEmpty()) {
+			return false;
+		}
+		
+		return property.equals(value);
+	}
+	
+	public String getPropertySet() {
+		return propertySet;
+	}
+	
+	public boolean hasPropertySet() {
+		return propertySet != null && !propertySet.isEmpty();
+	}
+
+	public void setPropertySet(String propertySet) {
+		this.propertySet = propertySet;
+	}
+	
+	public boolean matchesPropertySet(String value) {
+		if(value == null || value.isEmpty()) {
+			return false;
+		}
+		
+		if(propertySet == null || propertySet.isEmpty()) {
+			return true;
+		}
+		
+		return propertySet.equals(value);
+	}
+
 	public void setSkipDefaultRules(boolean skipDefaultRules) {
 		this.skipDefaultRules = skipDefaultRules;
+	}
+	
+	public boolean isComputeVolumes() {
+		return computeVolumes;
+	}
+
+	public void setComputeVolumes(boolean computeVolumes) {
+		this.computeVolumes = computeVolumes;
 	}
 
 	public String[] getOnlyCheckWithOwnType() {
@@ -56,6 +112,30 @@ public class ClashDetectorRules {
 	public void setEpsilon(double epsilon) {
 		this.epsilon = epsilon;
 	}
+	
+	public double getMinClashVolume() {
+		return minClashVolume;
+	}
+
+	public void setMinClashVolume(double minClashVolume) {
+		this.minClashVolume = minClashVolume;
+	}
+
+	public double getMinClashHorizontal() {
+		return minClashHorizontal;
+	}
+
+	public void setMinClashHorizontal(double minClashHorizontal) {
+		this.minClashHorizontal = minClashHorizontal;
+	}
+
+	public double getMinClashVertical() {
+		return minClashVertical;
+	}
+
+	public void setMinClashVertical(double minClashVertical) {
+		this.minClashVertical = minClashVertical;
+	}
 
 	public Combinations[] getTypesToCheck() {
 		if(typesToCheck == null) {
@@ -77,6 +157,7 @@ public class ClashDetectorRules {
 
 	public static class Combinations {
 		private String type;
+		private String id;
 		private String[] combinedWith;
 		
 		public Combinations() {
@@ -94,6 +175,14 @@ public class ClashDetectorRules {
 
 		public void setType(String type) {
 			this.type = type;
+		}
+		
+		public String getId() {
+			return id;
+		}
+
+		public void setId(String id) {
+			this.id = id;
 		}
 
 		public String[] getCombinedWith() {

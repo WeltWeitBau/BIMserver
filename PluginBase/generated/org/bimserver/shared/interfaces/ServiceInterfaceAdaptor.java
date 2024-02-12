@@ -604,4 +604,12 @@ public class ServiceInterfaceAdaptor implements org.bimserver.shared.interfaces.
 	public com.fasterxml.jackson.databind.node.ObjectNode detectClashes(java.lang.Long roid1, java.lang.Long roid2, java.lang.String rules) throws ServerException, UserException {
 		return null;
 	}
+	
+	public java.lang.Long detectClashesLong(java.lang.Long roid1, java.lang.Long roid2, java.lang.String rules) throws ServerException, UserException {
+		return null;
+	}
+	
+	public com.fasterxml.jackson.databind.node.ObjectNode getClashDetectionResult(java.lang.Long topicId) throws ServerException, UserException {
+		return null;
+	}
 }
