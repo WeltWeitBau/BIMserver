@@ -20,6 +20,7 @@ import org.bimserver.interfaces.objects.SProgressTopicType;
 import org.bimserver.interfaces.objects.SUser;
 import org.bimserver.longaction.LongAction;
 import org.bimserver.longaction.LongActionKey;
+import org.bimserver.models.store.ConcreteRevision;
 import org.bimserver.models.store.Revision;
 import org.bimserver.shared.HashMapVirtualObject;
 import org.bimserver.webservices.authorization.Authorization;
@@ -114,8 +115,9 @@ public class WwbLongCalculateQuantitiesAction extends LongAction<LongActionKey> 
 	private QueryObjectProvider createQueryProvider(DatabaseSession session)
 			throws BimserverDatabaseException, QueryException, IOException {
 		Revision revision = session.get(roid, OldQuery.getDefault());
+		ConcreteRevision concreteRevision = revision.getLastConcreteRevision();
 		
-		multiplierToM = revision.getLastConcreteRevision().getMultiplierToMm() / 1000;
+		multiplierToM = concreteRevision.getMultiplierToMm() / 1000;
 		
 		PackageMetaData packageMetaData = getBimServer().getMetaDataManager().getPackageMetaData(revision.getProject().getSchema());
 		
