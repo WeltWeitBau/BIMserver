@@ -35,8 +35,8 @@ public class ClashDetectionResults {
 	public long clashVolumeErrors = 0;
 	public long lastDump = 0;
 	
-	public int totalObjects = 0;
-	public int checkedObjects = 0;
+	public int totalCombinations = 0;
+	public int checkedCombinations = 0;
 	
 	private void add(Map<Long, Set<Long>> clashes, HashMapVirtualObject ifcProduct1, HashMapVirtualObject ifcProduct2) {
 		Set<Long> clashesWith = clashes.get(ifcProduct1.getOid());

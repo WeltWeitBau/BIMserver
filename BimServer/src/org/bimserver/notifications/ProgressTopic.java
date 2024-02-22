@@ -37,6 +37,7 @@ public class ProgressTopic extends Topic {
 	private ProgressTopicKey key;
 	private volatile LongActionState lastProgress;
 	private long lastSent = -1;
+	private boolean closed = false; 
 
 	public ProgressTopic(NotificationsManager notificationsManager, ProgressTopicKey key, SProgressTopicType type, String description) {
 		super(notificationsManager);
@@ -99,6 +100,11 @@ public class ProgressTopic extends Topic {
 	}
 	
 	public void close() {
+		closed = true;
+	}
+	
+	public boolean isClosed() {
+		return closed;
 	}
 
 	@Override

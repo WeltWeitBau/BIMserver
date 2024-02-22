@@ -81,5 +81,9 @@ public class WwbLongClashDetectorAction extends LongAction<WwbClashDetectionPara
 		public void retry(int count) {
 			// we don't do that kind of stuff
 		}
+		
+		public boolean isClosed() {
+			return getProgressTopic().isClosed();
+		}
 	}
 }

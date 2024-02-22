@@ -16,6 +16,8 @@ public class Triangle {
 	private double[] vertex2;
 	private double[] vertex3;
 	
+	private double[] minMax;
+	
 	public Triangle(double[] vertex1, double[] vertex2, double[] vertex3) {
 		this.vertex1 = vertex1;
 		this.vertex2 = vertex2;
@@ -47,6 +49,31 @@ public class Triangle {
 //			System.out.println(indices.);
 			throw e;
 		}
+	}
+	
+	public double[] getMinMax() {
+		if(minMax != null) {
+			return minMax;
+		}
+		
+		minMax = new double[] {
+				min(getVertex1()[0], getVertex2()[0], getVertex3()[0]),
+				min(getVertex1()[1], getVertex2()[1], getVertex3()[1]),
+				min(getVertex1()[2], getVertex2()[2], getVertex3()[2]),
+				max(getVertex1()[0], getVertex2()[0], getVertex3()[0]),
+				max(getVertex1()[1], getVertex2()[1], getVertex3()[1]),
+				max(getVertex1()[2], getVertex2()[2], getVertex3()[2]),
+		}; 
+		
+		return minMax;
+	}
+	
+	private double min(double d1, double d2, double d3) {
+		return Math.min(Math.min(d1, d2), d3);
+	}
+	
+	private double max(double d1, double d2, double d3) {
+		return Math.max(Math.max(d1, d2), d3);
 	}
 
 	public double[][] getVertices() {

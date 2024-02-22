@@ -108,7 +108,7 @@ public class WwbClashDetectorAction extends BimDatabaseAction<ObjectNode> {
 			}
 			
 			clashDetector = new ClashDetector(model1, model2, clashDetectionRules, progressHandler, roid1 == roid2);
-			ClashDetectionResults results =  clashDetector.findClashesHM();
+			ClashDetectionResults results =  clashDetector.findClashes();
 			ObjectNode resultNode = results.toJson();
 			resultNode.put("roid1", roid1);
 			resultNode.put("roid2", roid2);

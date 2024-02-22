@@ -5,6 +5,7 @@ public class ClashDetectorRules {
 	private double minClashVolume = -1;
 	private double minClashHorizontal = -1;
 	private double minClashVertical = -1;
+	private int volumeTriangleThreshold = 10000;
 	private boolean skipDefaultRules;
 	private boolean computeVolumes;
 	private String property;
@@ -154,6 +155,14 @@ public class ClashDetectorRules {
 	
 	public void setId(String strValue) {}
 	public String getId() {return "";}
+	
+	public int getVolumeTriangleThreshold() {
+		return volumeTriangleThreshold;
+	}
+
+	public void setVolumeTriangleThreshold(int volumeTriangleThreshold) {
+		this.volumeTriangleThreshold = volumeTriangleThreshold;
+	}
 
 	public static class Combinations {
 		private String type;

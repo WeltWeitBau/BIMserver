@@ -161,11 +161,11 @@ public class NotificationsManager {
 //	}
 	
 	public void unregister(long topicId) {
-//		ProgressTopic topic = progressTopicsById.get(topicId);
-//		if (topic != null) {
-//			topic.close();
-//			progressTopicsById.remove(topicId);
-//		}
+		ProgressTopic topic = progressTopicsById.get(topicId);
+		if (topic != null) {
+			topic.close();
+			progressTopicsById.remove(topicId);
+		}
 	}
 	
 	public NewUserTopic getNewUserTopic() {
