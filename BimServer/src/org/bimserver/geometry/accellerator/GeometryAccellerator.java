@@ -234,13 +234,13 @@ public class GeometryAccellerator {
 				@Override
 				public boolean moveUp(Node node) {
 					// TODO use more heuristics
-					int totalTriangles = 0;
-					for (GeometryObject geometryObject : node.getValues()) {
-						totalTriangles += geometryObject.getTriangles();
-					}
-					if (totalTriangles < 1200) {
-						return true;
-					}
+//					int totalTriangles = 0;
+//					for (GeometryObject geometryObject : node.getValues()) {
+//						totalTriangles += geometryObject.getTriangles();
+//					}
+//					if (totalTriangles < 1200) {
+//						return true;
+//					}
 					
 					return false;
 				}
