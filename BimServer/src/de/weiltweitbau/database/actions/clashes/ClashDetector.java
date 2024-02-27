@@ -33,7 +33,7 @@ public class ClashDetector {
 		private String type2;
 
 		public Combination(String type1, String type2) {
-			if (type1.compareTo(type2) > 0) {
+			if (type2 == null || type1.compareTo(type2) > 0) {
 				this.type1 = type1;
 				this.type2 = type2;
 			} else {
@@ -70,9 +70,7 @@ public class ClashDetector {
 			}
 				
 			if (type2 == null) {
-				if (other.type2 != null) {
-					return false;
-				}
+				return true;
 			} else if (!type2.equals(other.type2)) {
 				return false;
 			}
@@ -150,6 +148,10 @@ public class ClashDetector {
 
 	private void addCombinations(Combinations[] combinations, Set<Combination> target) {
 		for (Combinations combination : combinations) {
+			if(combination.getCombinedWith().length == 0) {
+				target.add(new Combination(combination.getType(), null));
+			}
+			
 			for (String combinedWith : combination.getCombinedWith()) {
 				target.add(new Combination(combination.getType(), combinedWith));
 			}
@@ -394,7 +396,7 @@ public class ClashDetector {
 	}
 	
 	private String getType(HashMapVirtualObject ifcProduct) {
-		if(!rules.hasProperty() && !rules.hasPropertySet()) {
+		if(!rules.hasProperty()) {
 			return ifcProduct.eClass().getName();
 		}
 		
