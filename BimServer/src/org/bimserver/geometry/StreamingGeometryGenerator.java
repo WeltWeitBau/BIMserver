@@ -715,6 +715,10 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 		key.append(mappingSource.getOid());
 		
 		Set<HashMapVirtualObject> colours = getColours(ifcMappedItem);
+		if(colours == null) {
+			return key.toString();
+		}
+		
 		for(HashMapVirtualObject colour : colours) {
 			key.append("_").append(formatColour(colour));
 		}
