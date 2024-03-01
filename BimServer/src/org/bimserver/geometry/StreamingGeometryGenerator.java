@@ -442,15 +442,15 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 										            a2 = yAxis;
 										            a1 = xAxis;
 													
+													double[] scale = getTransformationScalingVector(mappingTarget);
+													
 													List<Double> t = (List<Double>)localOrigin.get("Coordinates");
 													mappingMatrix = new double[]{
-														a1[0], a1[1], a1[2], 0,
-														a2[0], a2[1], a2[2], 0,
-														a3[0], a3[1], a3[2], 0,
+														a1[0] * scale[0], a1[1], a1[2], 0,
+														a2[0], a2[1] * scale[1], a2[2], 0,
+														a3[0], a3[1], a3[2] * scale[2], 0,
 														t.get(0).doubleValue(), t.get(1).doubleValue(), t.get(2).doubleValue(), 1
 													};
-													
-													scaleMappingMatrix(mappingTarget, mappingMatrix);
 												}
 												
 												AbstractHashMapVirtualObject placement = next.getDirectFeature(packageMetaData.getEReference("IfcProduct", "ObjectPlacement"));
@@ -781,14 +781,21 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 		values.stream().forEach(allValues::add);
 	}
 	
-	private void scaleMappingMatrix(AbstractHashMapVirtualObject mappingTarget, double[] mappingMatrix) {
-		double scaleX = getTransformationScale(mappingTarget, "Scale");
-		double scaleY = getTransformationScale(mappingTarget, "Scale2");
-		double scaleZ = getTransformationScale(mappingTarget, "Scale3");
-		
-		mappingMatrix[0] *= scaleX;
-		mappingMatrix[5] *= scaleY;
-		mappingMatrix[10] *= scaleZ;
+	private double[] getTransformationScalingVector(AbstractHashMapVirtualObject mappingTarget) {
+		if(packageMetaData.getEClass("IfcCartesianTransformationOperator3DnonUniform").isInstance(mappingTarget)) {
+			return new double[] {
+					getTransformationScale(mappingTarget, "Scale"),
+					getTransformationScale(mappingTarget, "Scale2"),
+					getTransformationScale(mappingTarget, "Scale3"),
+			};
+		} else {
+			double scale = getTransformationScale(mappingTarget, "Scale");
+			return new double[] {
+					scale,
+					scale,
+					scale,
+			};
+		}
 	}
 	
 	private double getTransformationScale(AbstractHashMapVirtualObject mappingTarget, String key) {
