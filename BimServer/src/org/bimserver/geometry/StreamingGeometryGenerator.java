@@ -96,6 +96,7 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 	final Map<Integer, Long> hashes = new ConcurrentHashMap<>();
 
 	private EClass productClass;
+	private EClass nonUniformScalingClass;
 	EReference geometryFeature;
 	EStructuralFeature representationFeature;
 	PackageMetaData packageMetaData;
@@ -163,6 +164,7 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 		GenerateGeometryResult generateGeometryResult = new GenerateGeometryResult();
 		packageMetaData = queryContext.getPackageMetaData();
 		productClass = packageMetaData.getEClass("IfcProduct");
+		nonUniformScalingClass = packageMetaData.getEClass("IfcCartesianTransformationOperator3DnonUniform");
 		geometryFeature = (EReference) productClass.getEStructuralFeature("geometry");
 		representationFeature = productClass.getEStructuralFeature("Representation");
 		representationsFeature = packageMetaData.getEClass("IfcProductDefinitionShape").getEStructuralFeature("Representations");
@@ -782,7 +784,7 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 	}
 	
 	private double[] getTransformationScalingVector(AbstractHashMapVirtualObject mappingTarget) {
-		if(packageMetaData.getEClass("IfcCartesianTransformationOperator3DnonUniform").isInstance(mappingTarget)) {
+		if(nonUniformScalingClass.isSuperTypeOf(mappingTarget.eClass())) {
 			return new double[] {
 					getTransformationScale(mappingTarget, "Scale"),
 					getTransformationScale(mappingTarget, "Scale2"),
