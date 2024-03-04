@@ -1157,12 +1157,28 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 			hasOpenings2.addInclude(objectPlacement);
 		}
 		
+		addUnitsSQueryPart(query);
+		
 		QueryObjectProvider queryObjectProvider = new QueryObjectProvider(databaseSession, bimServer, query, Collections.singleton(queryContext.getRoid()), packageMetaData);
 		
 		ReportJob job = report.newJob(eClass.getName(), nrObjects);
 		GeometryRunner runner = new GeometryRunner(this, eClass, renderEnginePool, databaseSession, settings, queryObjectProvider, ifcSerializerPlugin, renderEngineFilter, generateGeometryResult, queryContext, geometryReused, map, job, reuseGeometry, geometryGenerationDebugger, query);
 		executor.submit(runner);
 		jobsTotal.incrementAndGet();
+	}
+	
+	private void addUnitsSQueryPart(Query query) throws QueryException {
+		// IfcOpenShell wont render some representations correctly, if units are missing
+		QueryPart unitQueryPart = query.createQueryPart();
+		unitQueryPart.addType(packageMetaData.getEClass("IfcProject"), false);
+		Include unitsInContextInclude = unitQueryPart.createInclude();
+		unitsInContextInclude.addType(packageMetaData.getEClass("IfcProject"), false);
+		unitsInContextInclude.addField("UnitsInContext");
+		Include units = unitsInContextInclude.createInclude();
+		units.addType(packageMetaData.getEClass("IfcUnitAssignment"), false);
+		units.addField("Units");
+		Include unit = units.createInclude();
+		unit.addType(packageMetaData.getEClass("IfcSIUnit"), false);
 	}
 
 	private void processMappingQuery(final DatabaseSession databaseSession, QueryContext queryContext, GenerateGeometryResult generateGeometryResult, final StreamingSerializerPlugin ifcSerializerPlugin, final RenderEngineSettings settings,

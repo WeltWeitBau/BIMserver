@@ -151,7 +151,7 @@ public class GeometryRunner implements Runnable {
 				queryPart.addOid(oid);
 				if (eClass.isSuperTypeOf(next.eClass())) {
 					for (QueryPart qp : originalQuery.getQueryParts()) {
-						if (qp.getOids().contains(oid)) {
+						if (qp.getOids() != null && qp.getOids().contains(oid)) {
 							job.addObject(next.getOid(), next.eClass().getName());
 						}
 					}
@@ -172,7 +172,7 @@ public class GeometryRunner implements Runnable {
 						if (eClass.isSuperTypeOf(next.eClass())) {
 							if (next.eGet(GeometryRunner.this.streamingGeometryGenerator.representationFeature) != null) {
 								for (QueryPart qp : originalQuery.getQueryParts()) {
-									if (qp.getOids().contains(next.getOid())) {
+									if (qp.getOids() != null && qp.getOids().contains(next.getOid())) {
 										objects.add(next);
 									}
 								}
