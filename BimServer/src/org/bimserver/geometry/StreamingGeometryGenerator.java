@@ -31,6 +31,7 @@ import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -571,52 +572,10 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 				Include representationsInclude2 = rInclude.createInclude();
 				representationsInclude2.addType(packageMetaData.getEClass("IfcShapeModel"), true);
 				representationsInclude2.addFieldDirect("ContextOfItems");
-				
-				Query query = new Query("Main " + eClass.getName(), packageMetaData);
-				query.setDoubleBuffer(true);
-				QueryPart queryPart = query.createQueryPart();
-				int written = 0;
 
 				QueryObjectProvider queryObjectProvider2 = new QueryObjectProvider(databaseSession, bimServer, query3, Collections.singleton(queryContext.getRoid()), packageMetaData);
-				HashMapVirtualObject next = queryObjectProvider2.next();
-				
-				Set<Long> representationOids = new HashSet<>();
-				while (next != null) {
-					// Not sure why the duplicate code in the next 20 lines
-					if (next.eClass() == eClass && !done.contains(next.getOid()) && !toSkip.contains(next.getOid())) {
-						AbstractHashMapVirtualObject representation = next.getDirectFeature(representationFeature);
-						if (representation != null) {
-							Set<HashMapVirtualObject> list = representation.getDirectListFeature(packageMetaData.getEReference("IfcProductRepresentation", "Representations"));
-							Set<Long> goForIt = goForIt(list);
-							if (!goForIt.isEmpty()) {
-								if (next.eClass() == eClass && !done.contains(next.getOid())) {
-									representation = next.getDirectFeature(representationFeature);
-									if (representation != null) {
-										list = representation.getDirectListFeature(packageMetaData.getEReference("IfcProductRepresentation", "Representations"));
-										Set<Long> goForIt2 = goForIt(list);
-										if (!goForIt2.isEmpty()) {
-											queryPart.addOid(next.getOid());
-											representationOids.addAll(goForIt2);
-											written++;
-											if (written >= maxObjectsPerFile) {
-												processQuery(databaseSession, queryContext, generateGeometryResult, ifcSerializerPlugin, settings, renderEngineFilter, renderEnginePool, executor, eClass, query, queryPart, false, null, written, representationOids);
-												query = new Query("Main " + eClass.getName(), packageMetaData);
-												query.setDoubleBuffer(true);
-												queryPart = query.createQueryPart();
-												written = 0;
-												representationOids.clear();
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-					next = queryObjectProvider2.next();
-				}
-				if (written > 0) {
-					processQuery(databaseSession, queryContext, generateGeometryResult, ifcSerializerPlugin, settings, renderEngineFilter, renderEnginePool, executor, eClass, query, queryPart, false, null, written, representationOids);
-				}
+				Map<String, List<HashMapVirtualObject>> mappedProducts = mapProducts(queryObjectProvider2, done, toSkip, eClass);
+				processProducts(mappedProducts, eClass, maxObjectsPerFile, databaseSession, queryContext, generateGeometryResult, ifcSerializerPlugin, settings, renderEngineFilter, renderEnginePool, executor, reuseGeometry, maxObjectsPerFile);
 			}
 			
 			allJobsPushed = true;
@@ -921,6 +880,91 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 		}
 		// Assume meters, we need to multiply by 1000
 		return 1000f;
+	}
+	
+	private String getRepresentationKey(Set<HashMapVirtualObject> list) {
+		StringBuilder representationKey = new StringBuilder(128);
+		for (HashMapVirtualObject representationItem : list) {
+			representationKey.append(representationItem.get("RepresentationType")).append(";");
+		}
+		
+		return representationKey.toString();
+	}
+	
+	private Map<String, List<HashMapVirtualObject>> mapProducts(QueryObjectProvider queryObjectProvider, Set<Long> done, Set<Long> toSkip, EClass eClass) throws BimserverDatabaseException {
+		Map<String, List<HashMapVirtualObject>> mappedProducts = new HashMap<>();
+		
+		HashMapVirtualObject next = queryObjectProvider.next();
+		
+		while (next != null) {
+			if (next.eClass() != eClass || done.contains(next.getOid()) || toSkip.contains(next.getOid())) {
+				next = queryObjectProvider.next();
+				continue;
+			}
+
+			AbstractHashMapVirtualObject representation = next.getDirectFeature(representationFeature);
+			if (representation == null) {
+				next = queryObjectProvider.next();
+				continue;
+			}
+			
+			Set<HashMapVirtualObject> list = representation.getDirectListFeature(packageMetaData.getEReference("IfcProductRepresentation", "Representations"));
+			String key = getRepresentationKey(list);
+			
+			List<HashMapVirtualObject> products = mappedProducts.get(key);
+			if(products == null) {
+				products = new LinkedList<>();
+				mappedProducts.put(key, products);
+			}
+			
+			products.add(next);
+			
+			next = queryObjectProvider.next();
+		}
+		
+		return mappedProducts;
+	}
+	
+	private void processProducts(Map<String, List<HashMapVirtualObject>> mappedProducts, EClass eClass, int maxObjectsPerFile, final DatabaseSession databaseSession,
+			QueryContext queryContext, GenerateGeometryResult generateGeometryResult, final StreamingSerializerPlugin ifcSerializerPlugin,
+			final RenderEngineSettings settings, final RenderEngineFilter renderEngineFilter, RenderEnginePool renderEnginePool, ThreadPoolExecutor executor,
+			boolean geometryReused, int nrObjects) throws QueryException, IOException {
+		for(List<HashMapVirtualObject> products : mappedProducts.values()) {
+			int written = 0;
+			
+			Query query = new Query("Main " + eClass.getName(), packageMetaData);
+			query.setDoubleBuffer(true);
+			QueryPart queryPart = query.createQueryPart();
+			
+			Set<Long> representationOids = new HashSet<>();
+			
+			for(HashMapVirtualObject product : products) {
+				AbstractHashMapVirtualObject representation = product.getDirectFeature(representationFeature);
+				Set<HashMapVirtualObject> list = representation.getDirectListFeature(packageMetaData.getEReference("IfcProductRepresentation", "Representations"));
+				Set<Long> goForIt = goForIt(list);
+				if (goForIt.isEmpty()) {
+					continue;
+				}
+				
+				queryPart.addOid(product.getOid());
+				representationOids.addAll(goForIt);
+				written++;
+				if (written < maxObjectsPerFile) {
+					continue;
+				}
+				
+				processQuery(databaseSession, queryContext, generateGeometryResult, ifcSerializerPlugin, settings, renderEngineFilter, renderEnginePool, executor, eClass, query, queryPart, false, null, written, representationOids);
+				query = new Query("Main " + eClass.getName(), packageMetaData);
+				query.setDoubleBuffer(true);
+				queryPart = query.createQueryPart();
+				written = 0;
+				representationOids.clear();
+			}
+			
+			if (written > 0) {
+				processQuery(databaseSession, queryContext, generateGeometryResult, ifcSerializerPlugin, settings, renderEngineFilter, renderEnginePool, executor, eClass, query, queryPart, false, null, written, representationOids);
+			}
+		}
 	}
 
 	private Set<Long> goForIt(Set<HashMapVirtualObject> list) {
