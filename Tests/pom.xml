@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>de.weltweitbau</groupId>
 		<artifactId>parent</artifactId>
-		<version>1.3.6</version>
+		<version>1.3.7</version>
 	</parent>
 	<build>
 		<sourceDirectory>src</sourceDirectory>
@@ -43,7 +43,7 @@
 		<dependency>
 			<groupId>org.opensourcebim</groupId>
 			<artifactId>ifcplugins</artifactId>
-			<version>0.0.101-SNAPSHOT</version>
+			<version>0.0.101</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
