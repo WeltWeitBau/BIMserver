@@ -43,6 +43,7 @@ import org.bimserver.database.OldQuery;
 import org.bimserver.models.log.AccessMethod;
 import org.bimserver.models.store.ObjectType;
 import org.bimserver.models.store.StorePackage;
+import org.bimserver.plugins.Plugin;
 import org.bimserver.plugins.PluginConfiguration;
 import org.bimserver.plugins.PluginContext;
 import org.bimserver.plugins.renderengine.RenderEnginePlugin;
@@ -70,7 +71,7 @@ public class SetPluginSystemSettingsDatabaseAction extends BimDatabaseAction<Voi
 		getDatabaseSession().store(pluginDescriptor);
 		bimServer.getPluginSettingsCache().reset(pluginDescriptor.getOid());
 		
-		RenderEnginePlugin plugin = bimServer.getPluginManager().getRenderEnginePlugin(pluginDescriptor.getPluginClassName(), true);
+		Plugin plugin = bimServer.getPluginManager().getPlugin(pluginDescriptor.getIdentifier(), true);
 		PluginContext context = bimServer.getPluginManager().getPluginContext(plugin);
 		try {
 			plugin.init(context, new PluginConfiguration(convertedSettings));
