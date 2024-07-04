@@ -909,6 +909,12 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 			}
 			
 			Set<HashMapVirtualObject> list = representation.getDirectListFeature(packageMetaData.getEReference("IfcProductRepresentation", "Representations"));
+			if (list == null) {
+				LOGGER.warn("IfcProductRepresentation has no representations: " + next.toString() + "\n\n" + representation.toString());
+				next = queryObjectProvider.next();
+				continue;
+			}
+			
 			String key = getRepresentationKey(list);
 			
 			List<HashMapVirtualObject> products = mappedProducts.get(key);
