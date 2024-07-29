@@ -633,6 +633,11 @@ public class IfcUtils {
 			if (prefix != null) {
 				return LengthUnit.fromPrefix(prefix);
 			}
+		} else if (model.getPackageMetaData().getSchema() == Schema.IFC4X3) {
+			org.bimserver.models.ifc4x3.IfcSIPrefix prefix = getUnitPrefix(model, org.bimserver.models.ifc4x3.IfcUnitEnum.LENGTHUNIT);
+			if (prefix != null) {
+				return LengthUnit.fromPrefix(prefix);
+			}
 		}
 		return null;
 	}
@@ -645,6 +650,11 @@ public class IfcUtils {
 			}
 		} else if (model.getPackageMetaData().getSchema() == Schema.IFC4) {
 			org.bimserver.models.ifc4.IfcSIPrefix prefix = getUnitPrefix(model, org.bimserver.models.ifc4.IfcUnitEnum.MASSUNIT);
+			if (prefix != null) {
+				return MassUnit.fromPrefix(prefix);
+			}
+		} else if (model.getPackageMetaData().getSchema() == Schema.IFC4X3) {
+			org.bimserver.models.ifc4x3.IfcSIPrefix prefix = getUnitPrefix(model, org.bimserver.models.ifc4x3.IfcUnitEnum.MASSUNIT);
 			if (prefix != null) {
 				return MassUnit.fromPrefix(prefix);
 			}
@@ -663,6 +673,11 @@ public class IfcUtils {
 			if (prefix != null) {
 				return AreaUnit.fromPrefix(prefix);
 			}
+		} else if (model.getPackageMetaData().getSchema() == Schema.IFC4X3) {
+			org.bimserver.models.ifc4x3.IfcSIPrefix prefix = getUnitPrefix(model, org.bimserver.models.ifc4x3.IfcUnitEnum.AREAUNIT);
+			if (prefix != null) {
+				return AreaUnit.fromPrefix(prefix);
+			}
 		}
 		return null;
 	}
@@ -675,6 +690,11 @@ public class IfcUtils {
 			}
 		} else if (model.getPackageMetaData().getSchema() == Schema.IFC4) {
 			org.bimserver.models.ifc4.IfcSIPrefix prefix = getUnitPrefix(model, org.bimserver.models.ifc4.IfcUnitEnum.VOLUMEUNIT);
+			if (prefix != null) {
+				return VolumeUnit.fromPrefix(prefix);
+			}
+		} else if (model.getPackageMetaData().getSchema() == Schema.IFC4X3) {
+			org.bimserver.models.ifc4x3.IfcSIPrefix prefix = getUnitPrefix(model, org.bimserver.models.ifc4x3.IfcUnitEnum.VOLUMEUNIT);
 			if (prefix != null) {
 				return VolumeUnit.fromPrefix(prefix);
 			}
@@ -714,6 +734,25 @@ public class IfcUtils {
 						if (unitType == unitToFind) {
 							org.bimserver.models.ifc4.IfcSIPrefix prefix = ifcSIUnit.getPrefix();
 							return prefix;
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	public static org.bimserver.models.ifc4x3.IfcSIPrefix getUnitPrefix(IfcModelInterface model, org.bimserver.models.ifc4x3.IfcUnitEnum unitToFind) {
+		for (org.bimserver.models.ifc4x3.IfcProject ifcProject : model.getAll(org.bimserver.models.ifc4x3.IfcProject.class)) {
+			org.bimserver.models.ifc4x3.IfcUnitAssignment unitsInContext = ifcProject.getUnitsInContext();
+			if (unitsInContext != null) {
+				EList<org.bimserver.models.ifc4x3.IfcUnit> units = unitsInContext.getUnits();
+				for (org.bimserver.models.ifc4x3.IfcUnit unit : units) {
+					if (unit instanceof org.bimserver.models.ifc4x3.IfcSIUnit) {
+						org.bimserver.models.ifc4x3.IfcSIUnit ifcSIUnit = (org.bimserver.models.ifc4x3.IfcSIUnit) unit;
+						org.bimserver.models.ifc4x3.IfcUnitEnum unitType = ifcSIUnit.getUnitType();
+						if (unitType == unitToFind) {
+							return ifcSIUnit.getPrefix();
 						}
 					}
 				}

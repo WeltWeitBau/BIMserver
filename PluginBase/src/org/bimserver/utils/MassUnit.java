@@ -73,6 +73,17 @@ public enum MassUnit implements BasicUnit {
 			throw new RuntimeException("Unimplemented prefix: " + prefix);
 		}
 	}
+	
+	public static MassUnit fromPrefix(org.bimserver.models.ifc4x3.IfcSIPrefix prefix) {
+		switch(prefix) {
+		case NULL:
+			return MassUnit.GRAM;
+		case KILO:
+			return MassUnit.KILOGRAM;
+		default:
+			throw new RuntimeException("Unimplemented prefix: " + prefix);
+		}
+	}
 
 	public abstract double toGram(double volume);
 

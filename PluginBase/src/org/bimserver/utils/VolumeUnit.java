@@ -156,6 +156,21 @@ public enum VolumeUnit implements BasicUnit {
 		}
 	}
 	
+	public static VolumeUnit fromPrefix(org.bimserver.models.ifc4x3.IfcSIPrefix prefix) {
+		switch(prefix) {
+		case NULL: 
+			return VolumeUnit.CUBIC_METER;
+		case MILLI:
+			return VolumeUnit.CUBIC_MILLI_METER;
+		case CENTI:
+			return VolumeUnit.CUBIC_CENTI_METER;
+		case DECI:
+			return VolumeUnit.CUBIC_DECI_METER;
+		default:
+			throw new RuntimeException("Unimplemented prefix: " + prefix);
+		}
+	}
+	
 	public abstract double toCubicMilliMeter(double volume);
 
 	public abstract double toCubicCentiMeter(double volume);

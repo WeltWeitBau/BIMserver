@@ -110,6 +110,19 @@ public enum AreaUnit implements BasicUnit {
 		}
 	}
 	
+	public static AreaUnit fromPrefix(org.bimserver.models.ifc4x3.IfcSIPrefix prefix) {
+		switch (prefix) {
+		case NULL:
+			return AreaUnit.SQUARED_METER;
+		case MILLI:
+			return AreaUnit.SQUARED_MILLI_METER;
+		case CENTI:
+			return AreaUnit.SQUARED_CENTI_METER;
+		default:
+			throw new RuntimeException("Unimplemented prefix: " + prefix);
+		}
+	}
+	
 	public abstract double toSquaredMilliMeters(double area);
 
 	public abstract double toSquaredCentiMeters(double area);
