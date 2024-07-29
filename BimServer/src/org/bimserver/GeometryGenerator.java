@@ -38,6 +38,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.commons.lang.StringUtils;
 import org.bimserver.database.DatabaseSession;
 import org.bimserver.emf.IdEObject;
 import org.bimserver.emf.IfcModelInterface;
@@ -488,12 +489,7 @@ public class GeometryGenerator extends GenericGeometryGenerator {
 			return null;
 		}
 		long start = System.nanoTime();
-		String pluginName = "";
-		if (model.getPackageMetaData().getSchema() == Schema.IFC4) {
-			pluginName = "org.bimserver.ifc.step.serializer.Ifc4StepSerializerPlugin";
-		} else if (model.getPackageMetaData().getSchema() == Schema.IFC2X3TC1) {
-			pluginName = "org.bimserver.ifc.step.serializer.Ifc2x3tc1StepSerializerPlugin";
-		}
+		String pluginName = getIfcStepSerializerPluginName(model.getPackageMetaData().getSchema());
 
 		try {
 			final SerializerPlugin ifcSerializerPlugin = (SerializerPlugin) pluginManager.getPlugin(pluginName, true);
@@ -579,6 +575,11 @@ public class GeometryGenerator extends GenericGeometryGenerator {
 			throw new GeometryGeneratingException(e);
 		}
 		return generateGeometryResult;
+	}
+	
+	private String getIfcStepSerializerPluginName(Schema schema) {
+		String schemaName = StringUtils.capitalize(schema.name().toLowerCase());
+		return "org.bimserver.ifc.step.serializer." + schemaName + "StepSerializerPlugin";
 	}
 	
 	private int hash(GeometryData geometryData) {

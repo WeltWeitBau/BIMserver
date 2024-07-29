@@ -1,5 +1,7 @@
 package org.bimserver.changes;
 
+import org.bimserver.emf.Schema;
+
 /******************************************************************************
  * Copyright (C) 2009-2019  BIMserver.org
  * 
@@ -17,12 +19,10 @@ package org.bimserver.changes;
  * along with this program.  If not, see {@literal<http://www.gnu.org/licenses/>}.
  *****************************************************************************/
 
-import org.bimserver.models.ifc2x3tc1.Ifc2x3tc1Package;
-import org.bimserver.models.ifc4.Ifc4Package;
 import org.eclipse.emf.ecore.EClass;
 
 public class ChangeHelper {
 	public static boolean canBeChanged(EClass eClass) {
-		return eClass.getEPackage() == Ifc2x3tc1Package.eINSTANCE || eClass.getEPackage() == Ifc4Package.eINSTANCE;
+		return Schema.isIfcClass(eClass);
 	}
 }

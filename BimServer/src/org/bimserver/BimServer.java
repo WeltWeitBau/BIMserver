@@ -69,6 +69,7 @@ import org.bimserver.database.query.literals.StringLiteral;
 import org.bimserver.emf.IfcModelInterface;
 import org.bimserver.emf.MetaDataManager;
 import org.bimserver.emf.PackageMetaData;
+import org.bimserver.emf.Schema;
 import org.bimserver.endpoints.EndPointManager;
 import org.bimserver.geometry.accellerator.GeometryAccellerator;
 import org.bimserver.interfaces.SConverter;
@@ -78,8 +79,6 @@ import org.bimserver.interfaces.objects.SPluginInformation;
 import org.bimserver.interfaces.objects.SVersion;
 import org.bimserver.longaction.LongActionManager;
 import org.bimserver.mail.MailSystem;
-import org.bimserver.models.ifc2x3tc1.Ifc2x3tc1Package;
-import org.bimserver.models.ifc4.Ifc4Package;
 import org.bimserver.models.log.AccessMethod;
 import org.bimserver.models.log.ServerStarted;
 import org.bimserver.models.store.BooleanType;
@@ -662,8 +661,11 @@ public class BimServer implements BasicServerInfoProvider {
 			longActionManager = new LongActionManager(this);
 
 			Set<EPackage> packages = new LinkedHashSet<>();
-			packages.add(Ifc2x3tc1Package.eINSTANCE);
-			packages.add(Ifc4Package.eINSTANCE);
+			
+			for(Schema schema : Schema.getIfcSchemas()) {
+				packages.add(schema.getEPackage());
+			}
+			
 			templateEngine = new TemplateEngine();
 			ResourceFetcher resourceFetcher = config.getResourceFetcher();
 			if (resourceFetcher.isDirectory("emailtemplates")) {
@@ -736,11 +738,11 @@ public class BimServer implements BasicServerInfoProvider {
 			serializerFactory = new SerializerFactory();
 
 			serverSettingsCache = new ServerSettingsCache(bimDatabase);
-
-			for (String schema : new String[]{"ifc2x3tc1", "ifc4"}) {
+			
+			for(Schema schema : Schema.getIfcSchemas()) {
 				for (String type : new String[] {"geometry", "stdlib"}) {
 					try {
-						PackageMetaData packageMetaData = getMetaDataManager().getPackageMetaData(schema);
+						PackageMetaData packageMetaData = getMetaDataManager().getPackageMetaData(schema.name().toLowerCase());
 						JsonQueryObjectModelConverter jsonQueryObjectModelConverter = new JsonQueryObjectModelConverter(packageMetaData);
 						String queryNameSpace = schema + "-" + type;
 						if (type.contentEquals("stdlib")) {

@@ -24,6 +24,7 @@ import org.bimserver.BimserverDatabaseException;
 import org.bimserver.database.BimserverLockConflictException;
 import org.bimserver.database.DatabaseSession;
 import org.bimserver.database.PostCommitAction;
+import org.bimserver.emf.Schema;
 import org.bimserver.models.log.AccessMethod;
 import org.bimserver.models.log.NewProjectAdded;
 import org.bimserver.models.store.GeoTag;
@@ -92,11 +93,10 @@ public class AddProjectDatabaseAction extends BimDatabaseAction<Project> {
 			}
 			project.setGeoTag(parent.getGeoTag());
 		}
-		if (schema == null || (!schema.toLowerCase().equals("ifc2x3tc1") && !schema.toLowerCase().equals("ifc4"))) {
-			throw new UserException("Invalid schema, the only 2 valid options are: \"ifc2x3tc1\" and \"ifc4\", not \"" + this.schema + "\"");
-		}
 		
 		schema = schema.toLowerCase();
+		
+		checkSchema(schema);
 		
 		final NewProjectAdded newProjectAdded = getDatabaseSession().create(NewProjectAdded.class);
 		newProjectAdded.setDate(new Date());
@@ -135,5 +135,27 @@ public class AddProjectDatabaseAction extends BimDatabaseAction<Project> {
 		getDatabaseSession().store(actingUser);
 		getDatabaseSession().store(newProjectAdded);
 		return project;
+	}
+	
+	private void checkSchema(String schema) throws UserException {
+		if (!isSchemaValid(schema)) {
+			StringBuilder message = new StringBuilder("Invalid schema, the only valid options are:");
+			
+			for(Schema value : Schema.getIfcSchemas()) {
+				message.append(" \"" + value.name().toLowerCase() + "\"");
+			}
+			
+			message.append(" not \"" + this.schema + "\"");
+			
+			throw new UserException(message.toString());
+		}
+	}
+	
+	private boolean isSchemaValid(String schema) {
+		if(schema == null) {
+			return false;
+		}
+		
+		return Schema.fromIfcHeader(schema) != null;
 	}
 }

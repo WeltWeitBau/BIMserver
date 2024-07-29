@@ -32,6 +32,7 @@ import java.util.TreeSet;
 
 import org.bimserver.models.ifc2x3tc1.Ifc2x3tc1Package;
 import org.bimserver.models.ifc4.Ifc4Package;
+import org.bimserver.models.ifc4x3.Ifc4x3Package;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
@@ -104,13 +105,15 @@ public class PackageMetaData implements ObjectFactory, Comparable<PackageMetaDat
 		}
 		initUpperCases();
 		initEClassClassMap();
-		if (ePackage == Ifc2x3tc1Package.eINSTANCE || ePackage == Ifc4Package.eINSTANCE) {
+		if (Schema.isIfcPackage(ePackage)) {
 			initOppositeInfo();
 			try {
 				if (schema == Schema.IFC2X3TC1) {
 					schemaDefinition = SchemaLoader.loadIfc2x3tc1();
 				} else if (schema == Schema.IFC4) {
 					schemaDefinition = SchemaLoader.loadIfc4();
+				} else if (schema == Schema.IFC4X3) {
+					schemaDefinition = SchemaLoader.loadIfc4x3add2();
 				} else {
 					LOGGER.error("Unimplemented schema: " + schema);
 				}
@@ -135,7 +138,7 @@ public class PackageMetaData implements ObjectFactory, Comparable<PackageMetaDat
 		
 		try {
 			initUnsettedLengths();
-			if (ePackage == Ifc2x3tc1Package.eINSTANCE || ePackage == Ifc4Package.eINSTANCE) {
+			if (Schema.isIfcPackage(ePackage)) {
 				// Only do this for IFC schemas, other schemas do not have inverses (since that's an express concept)
 				initInverses();
 			}
@@ -243,7 +246,9 @@ public class PackageMetaData implements ObjectFactory, Comparable<PackageMetaDat
  				} else if (eReference == Ifc4Package.eINSTANCE.getIfcResourceApprovalRelationship_RelatedResourceObjects()) {
  					hasInverse = true;
  				}			
-			} 
+			} else if (eReference.getEContainingClass().getEPackage() == Ifc4x3Package.eINSTANCE) {
+				// TODO
+			}
 		}
 		hasInverseCache.put(eReference, hasInverse);
 	}
@@ -897,6 +902,8 @@ public class PackageMetaData implements ObjectFactory, Comparable<PackageMetaDat
 					return Ifc4Package.eINSTANCE.getIfcTypeProduct_ReferencedBy();
 				}
 			}
+		} else if (eStructuralFeature.getEContainingClass().getEPackage() == Ifc4Package.eINSTANCE) {
+			// TODO
 		}
 		
  		return null;

@@ -1,7 +1,7 @@
 package org.bimserver.emf;
 
 /******************************************************************************
- * Copyright (C) 2009-2019  BIMserver.org
+ * Copyright (C) 2009-2024  BIMserver.org
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,8 +23,10 @@ import java.util.Set;
 import org.bimserver.models.geometry.GeometryPackage;
 import org.bimserver.models.ifc2x3tc1.Ifc2x3tc1Package;
 import org.bimserver.models.ifc4.Ifc4Package;
+import org.bimserver.models.ifc4x3.Ifc4x3Package;
 import org.bimserver.models.log.LogPackage;
 import org.bimserver.models.store.StorePackage;
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
 
 public enum Schema {
@@ -32,7 +34,8 @@ public enum Schema {
 	GEOMETRY(GeometryPackage.eINSTANCE, "GEOMETRY"),
 	LOG(LogPackage.eINSTANCE, "LOG"),
 	IFC2X3TC1(Ifc2x3tc1Package.eINSTANCE, "IFC2X3"),
-	IFC4(Ifc4Package.eINSTANCE, "IFC4");
+	IFC4(Ifc4Package.eINSTANCE, "IFC4"),
+	IFC4X3(Ifc4x3Package.eINSTANCE, "IFC4X3");
 	
 	private String headerName;
 	private EPackage ePackage;
@@ -63,20 +66,50 @@ public enum Schema {
 	public String getEPackageName() {
 		return ePackage.getName();
 	}
+	
+	public EPackage getEPackage() {
+		return ePackage;
+	}
+	
+	public static boolean isIfcClass(EClass eClass) {
+		if(eClass == null) {
+			return false;
+		}
+		
+		return isIfcPackage(eClass.getEPackage());
+	}
+	
+	public static boolean isIfcPackage(EPackage ePackage) {
+		if(ePackage == null) {
+			return false;
+		}
+		
+		return ePackage == Ifc2x3tc1Package.eINSTANCE
+				|| ePackage == Ifc4Package.eINSTANCE
+				|| ePackage == Ifc4x3Package.eINSTANCE;
+	}
 
 	public static Set<Schema> getIfcSchemas() {
 		Set<Schema> schemas = new HashSet<>();
 		schemas.add(IFC2X3TC1);
 		schemas.add(IFC4);
+		schemas.add(IFC4X3);
 		return schemas;
 	}
 
 	public static Schema fromIfcHeader(String schema) {
-		if ("IFC2X3".equals(schema.toUpperCase())) {
-			return Schema.IFC2X3TC1;
-		} else if ("IFC4".equals(schema.toUpperCase())) {
-			return Schema.IFC4;
+		switch (schema.toUpperCase()) {
+			case "IFC2X3":
+			case "IFC2X3TC1":
+				return Schema.IFC2X3TC1;
+			case "IFC4":
+				return Schema.IFC4;
+			case "IFC4X3":
+			case "IFC4X3_ADD2":
+				return Schema.IFC4X3;
+	
+			default:
+				return null;
 		}
-		return null;
 	}
 }

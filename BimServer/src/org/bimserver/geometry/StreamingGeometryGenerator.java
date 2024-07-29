@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.bimserver.BimServer;
 import org.bimserver.BimserverDatabaseException;
 import org.bimserver.GenerateGeometryResult;
@@ -173,14 +174,7 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 		debugIdentifier = dateFormat.format(now.getTime()) + " (" + report.getOriginalIfcFileName() + ")";
 
 		long start = System.nanoTime();
-		String pluginName = "";
-		if (queryContext.getPackageMetaData().getSchema() == Schema.IFC4) {
-			pluginName = "org.bimserver.ifc.step.serializer.Ifc4StepStreamingSerializerPlugin";
-		} else if (queryContext.getPackageMetaData().getSchema() == Schema.IFC2X3TC1) {
-			pluginName = "org.bimserver.ifc.step.serializer.Ifc2x3tc1StepStreamingSerializerPlugin";
-		} else {
-			throw new GeometryGeneratingException("Unknown schema " + queryContext.getPackageMetaData().getSchema());
-		}
+		String pluginName = getStreamingStepSerializerPluginName(queryContext.getPackageMetaData().getSchema());
 		
 		reuseGeometry = bimServer.getServerSettingsCache().getServerSettings().isReuseGeometry();
 		optimizeMappedItems = bimServer.getServerSettingsCache().getServerSettings().isOptimizeMappedItems();
@@ -682,6 +676,129 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 			LOGGER.debug("", e);
 		}
 		return generateGeometryResult;
+	}
+	
+	private String getStreamingStepSerializerPluginName(Schema schema) throws GeometryGeneratingException {
+		String schemaName = StringUtils.capitalize(schema.name().toLowerCase());
+		return "org.bimserver.ifc.step.serializer." + schemaName + "StepStreamingSerializerPlugin";
+	}
+	
+	private void includeItemStyle(Include mappingSourceInclude) throws QueryException {
+		mappingSourceInclude.addFieldDirect("StyledByItem");
+		Include stylesInclude = mappingSourceInclude.createInclude();
+		stylesInclude.addType(packageMetaData.getEClass("IfcStyledItem"), true);
+		stylesInclude.addFieldDirect("Styles");
+		Include styleAssignmentInclude = stylesInclude.createInclude();
+		styleAssignmentInclude.addType(packageMetaData.getEClass("IfcPresentationStyleAssignment"), true);
+		styleAssignmentInclude.addFieldDirect("Styles");
+		Include presentationStyleInclude = styleAssignmentInclude.createInclude();
+		presentationStyleInclude.addType(packageMetaData.getEClass("IfcSurfaceStyle"), true);
+		presentationStyleInclude.addFieldDirect("Styles");
+		Include shadingInclude = presentationStyleInclude.createInclude();
+		shadingInclude.addType(packageMetaData.getEClass("IfcSurfaceStyleShading"), true);
+		shadingInclude.addFieldDirect("SurfaceColour");
+	}
+	
+	private String getRepresentationMapKey(HashMapVirtualObject ifcMappedItem) {
+		HashMapVirtualObject mappingSource = (HashMapVirtualObject) ifcMappedItem.getDirectFeature(mappingSourceFeature);
+		if(mappingSource == null) {
+			return null;
+		}
+		
+		StringBuilder key = new StringBuilder(256);
+		key.append(mappingSource.getOid());
+		
+		Set<HashMapVirtualObject> colours = getColours(ifcMappedItem);
+		if(colours == null) {
+			return key.toString();
+		}
+		
+		for(HashMapVirtualObject colour : colours) {
+			key.append("_").append(formatColour(colour));
+		}
+		
+		return key.toString();
+	}
+	
+	private String formatColour(HashMapVirtualObject colour) {
+		return String.format(Locale.US, "[%.2f,%.2f,%.2f]", colour.get("Red"), colour.get("Green"), colour.get("Blue"));
+	}
+	
+	private Set<HashMapVirtualObject> getColours(HashMapVirtualObject ifcMappedItem) {
+		Set<HashMapVirtualObject> styledItems = ifcMappedItem.getDirectListFeature(packageMetaData.getEReference("IfcMappedItem", "StyledByItem"));
+		Set<HashMapVirtualObject> styleAssignments = getAllFeatures(styledItems, "IfcStyledItem", "Styles");
+		Set<HashMapVirtualObject> presentationStyles = getAllFeatures(styleAssignments, "IfcPresentationStyleAssignment", "Styles");
+		Set<HashMapVirtualObject> surfaceStyles = getAllFeatures(presentationStyles, "IfcSurfaceStyle", "Styles");
+		return getAllFeatures(surfaceStyles, "IfcSurfaceStyleShading", "SurfaceColour");
+	}
+	
+	private Set<HashMapVirtualObject> getAllFeatures(Set<HashMapVirtualObject> items, String type, String property) {
+		if(items == null || items.isEmpty()) {
+			return null;
+		}
+		
+		Set<HashMapVirtualObject> allValues = new HashSet<>();
+		
+		EClass eClass = packageMetaData.getEClass(type);
+		EReference eReference = packageMetaData.getEReference(type, property);
+		
+		for(HashMapVirtualObject item : items) {
+			if (!eClass.isSuperTypeOf(item.eClass())) {
+				continue;
+			}
+			
+			if(eReference.isMany()) {
+				addAllListFeatures(item, eReference, allValues);
+			} else {
+				addAllFeatures(item, eReference, allValues);
+			}
+		}
+		
+		return allValues;
+	}
+	
+	private void addAllFeatures(HashMapVirtualObject item, EReference eReference, Set<HashMapVirtualObject> allValues) {
+		HashMapVirtualObject value = (HashMapVirtualObject) item.getDirectFeature(eReference);
+		if(value == null) {
+			return;
+		}
+		
+		allValues.add(value);
+	}
+	
+	private void addAllListFeatures(HashMapVirtualObject item, EReference eReference, Set<HashMapVirtualObject> allValues) {
+		Set<HashMapVirtualObject> values = item.getDirectListFeature(eReference);
+		if(values == null || values.isEmpty()) {
+			return;
+		}
+		
+		values.stream().forEach(allValues::add);
+	}
+	
+	private double[] getTransformationScalingVector(AbstractHashMapVirtualObject mappingTarget) {
+		if(nonUniformScalingClass.isSuperTypeOf(mappingTarget.eClass())) {
+			return new double[] {
+					getTransformationScale(mappingTarget, "Scale"),
+					getTransformationScale(mappingTarget, "Scale2"),
+					getTransformationScale(mappingTarget, "Scale3"),
+			};
+		} else {
+			double scale = getTransformationScale(mappingTarget, "Scale");
+			return new double[] {
+					scale,
+					scale,
+					scale,
+			};
+		}
+	}
+	
+	private double getTransformationScale(AbstractHashMapVirtualObject mappingTarget, String key) {
+		Object scale = mappingTarget.get(key);
+		if(scale instanceof Double) {
+			return (Double) scale;
+		}
+		
+		return 1;
 	}
 	
 	private double[] createQuantizationMatrixFromBounds(Bounds bounds, float multiplierToMm) {

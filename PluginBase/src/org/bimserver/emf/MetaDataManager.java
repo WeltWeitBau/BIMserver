@@ -47,11 +47,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.bimserver.models.geometry.GeometryPackage;
-import org.bimserver.models.ifc2x3tc1.Ifc2x3tc1Package;
-import org.bimserver.models.ifc4.Ifc4Package;
-import org.bimserver.models.log.LogPackage;
-import org.bimserver.models.store.StorePackage;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
@@ -80,11 +75,9 @@ public class MetaDataManager {
 			System.setOut(nop);
 		}
 		
-		executor.submit(new PackageLoader(this, Ifc2x3tc1Package.eINSTANCE, Schema.IFC2X3TC1));
-		executor.submit(new PackageLoader(this, Ifc4Package.eINSTANCE, Schema.IFC4));
-		executor.submit(new PackageLoader(this, GeometryPackage.eINSTANCE, Schema.GEOMETRY));
-		executor.submit(new PackageLoader(this, StorePackage.eINSTANCE, Schema.STORE));
-		executor.submit(new PackageLoader(this, LogPackage.eINSTANCE, Schema.LOG));
+		for(Schema schema : Schema.values()) {
+			executor.submit(new PackageLoader(this, schema));
+		}
 		
 		executor.shutdown();
 		try {
@@ -140,8 +133,11 @@ public class MetaDataManager {
 
 	public Collection<PackageMetaData> getAllIfc() {
 		Set<PackageMetaData> result = new HashSet<>();
-		result.add(getPackageMetaData("Ifc2x3tc1"));
-		result.add(getPackageMetaData("Ifc4"));
+		
+		for(Schema schema : Schema.getIfcSchemas()) {
+			result.add(getPackageMetaData(schema.name().toLowerCase()));
+		}
+		
 		return result;
 	}
 }
