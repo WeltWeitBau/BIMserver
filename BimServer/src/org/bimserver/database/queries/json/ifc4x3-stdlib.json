@@ -30,7 +30,7 @@
             "WorldCoordinateSystem",
             "TrueNorth"
          ],
-         "includes": ["ifc4-geometry:IfcAxis2Placement3D"]
+         "includes": ["ifc4x3-geometry:IfcAxis2Placement3D"]
       },
       "IfcGeometricRepresentationSubContext": {
          "type": "IfcGeometricRepresentationSubContext",
@@ -123,9 +123,9 @@
               "MappedRepresentation"
            ],
            "includes": [
-              "ifc4-geometry:IfcAxis2Placement2D",
-              "ifc4-geometry:IfcAxis2Placement3D",
-              "ifc4-geometry:IfcRepresentation"
+              "ifc4x3-geometry:IfcAxis2Placement2D",
+              "ifc4x3-geometry:IfcAxis2Placement3D",
+              "ifc4x3-geometry:IfcRepresentation"
            ]
       },
       "Decomposes": {
@@ -219,8 +219,8 @@
             "type": "IfcProductRepresentation",
             "field": "Representations",
             "includes": [
-               "ifc4-geometry:IfcRepresentation",
-               "ifc4-geometry:IfcBooleanResult"
+               "ifc4x3-geometry:IfcRepresentation",
+               "ifc4x3-geometry:IfcBooleanResult"
             ]
          }
       },
@@ -228,7 +228,6 @@
          "type": "IfcLocalPlacement",
          "fields": ["PlacementRelTo", "RelativePlacement"],
          "includes": [
-            "RelativePlacement",
             {
               "type": "IfcAxis2Placement3D",
                   "fields": [
@@ -247,7 +246,7 @@
       "IfcMaterialDefinitionRepresentation": {
       	"type": "IfcMaterialDefinitionRepresentation",
       	"fields": ["Representations"],
-      	"includes": ["ifc4-geometry:IfcRepresentation"]
+      	"includes": ["ifc4x3-geometry:IfcRepresentation"]
       },
       "IfcMaterialList": {
       	"type": "IfcMaterialList",

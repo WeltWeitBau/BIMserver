@@ -60,7 +60,7 @@ public class GenerateGeometryLibrary {
 		process((EClass) ePackage.getEClassifier("IfcShapeRepresentation"), (EClass) ePackage.getEClassifier("IfcRepresentation"));
 //		cleanup();
 		try {
-			Files.write(OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(rootNode), new File("C:\\Users\\Ruben de Laat\\git\\BIMserver\\BimServer\\src\\org\\bimserver\\database\\queries\\json\\" + schema.name().toLowerCase() + "-geometry.json"));
+			Files.write(OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(rootNode), new File("src\\org\\bimserver\\database\\queries\\json\\" + schema.name().toLowerCase() + "-geometry.json"));
 		} catch (JsonProcessingException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
