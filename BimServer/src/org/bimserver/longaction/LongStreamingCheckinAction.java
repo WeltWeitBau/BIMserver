@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 import de.weiltweitbau.WwbConfig;
 import de.weiltweitbau.database.actions.WwbLongCalculateQuantitiesAction;
 
-public class LongStreamingCheckinAction extends LongAction<LongCheckinActionKey> {
+public class LongStreamingCheckinAction extends LongAction {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(LongStreamingCheckinAction.class);
 	private StreamingCheckinDatabaseAction checkinDatabaseAction;

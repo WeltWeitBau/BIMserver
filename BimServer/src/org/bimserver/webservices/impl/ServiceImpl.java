@@ -355,7 +355,7 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 
 	@Override
 	public void terminateLongRunningAction(Long topicId) throws ServerException, UserException {
-		LongAction<?> longAction = getBimServer().getLongActionManager().getLongAction(topicId);
+		LongAction longAction = getBimServer().getLongActionManager().getLongAction(topicId);
 		if (longAction != null) {
 			longAction.terminate();
 		} else {
@@ -365,7 +365,7 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 
 	@Override
 	public SDownloadResult getDownloadData(final Long topicId) throws ServerException, UserException {
-		LongAction<?> longAction = getBimServer().getLongActionManager().getLongAction(topicId);
+		LongAction longAction = getBimServer().getLongActionManager().getLongAction(topicId);
 		if (longAction == null) {
 			throw new UserException("No data found for topicId " + topicId);
 		}
@@ -1192,8 +1192,8 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 
 	@Override
 	public Long checkinInitiatedAsync(Long topicId, final Long poid, final String comment, Long deserializerOid, Long fileSize, String fileName, DataHandler dataHandler, Boolean merge) throws ServerException, UserException {
-		SLongActionState checkinInitiatedInternal = checkinInitiatedInternal(topicId, poid, comment, deserializerOid, fileSize, fileName, dataHandler, merge, false, -1);
-		return checkinInitiatedInternal.getTopicId();
+		checkinInitiatedInternal(topicId, poid, comment, deserializerOid, fileSize, fileName, dataHandler, merge, false, -1);
+		return topicId;
 	}
 
 	private SLongCheckinActionState checkinInternal(Long topicId, final Long poid, final String comment, Long deserializerOid, Long fileSize, String fileName, InputStream originalInputStream, Boolean merge, Boolean sync,
@@ -1204,7 +1204,8 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 		if (deserializerPluginConfiguration == null) {
 			throw new UserException("Deserializer with oid " + deserializerOid + " not found");
 		} else {
-			PluginBundleVersion pluginBundleVersion = deserializerPluginConfiguration.getPluginDescriptor().getPluginBundleVersion();
+			PluginBundleVersion deserializerVersion = deserializerPluginConfiguration.getPluginDescriptor().getPluginBundleVersion();
+			String deserializerVersionString = deserializerVersion.getGroupId() + "." + deserializerVersion.getArtifactId() + ":" + deserializerVersion.getVersion();
 			Plugin plugin = getBimServer().getPluginManager().getPlugin(deserializerPluginConfiguration.getPluginDescriptor().getPluginClassName(), true);
 			if (plugin != null) {
 				if (plugin instanceof DeserializerPlugin) {
@@ -1239,7 +1240,7 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 					streamingDeserializer.init(getBimServer().getDatabase().getMetaDataManager().getPackageMetaData(project.getSchema()));
 					RestartableInputStream restartableInputStream = new RestartableInputStream(originalInputStream, file);
 					StreamingCheckinDatabaseAction checkinDatabaseAction = new StreamingCheckinDatabaseAction(getBimServer(), null, getInternalAccessMethod(), poid, getAuthorization(), comment, fileName, restartableInputStream,
-							streamingDeserializer, fileSize, newServiceId, pluginBundleVersion, topicId);
+							streamingDeserializer, fileSize, newServiceId, deserializerVersionString, topicId);
 					LongStreamingCheckinAction longAction = new LongStreamingCheckinAction(topicId, getBimServer(), username, userUsername, getAuthorization(), checkinDatabaseAction);
 					getBimServer().getLongActionManager().start(longAction);
 					ProgressTopic progressTopic = null;
@@ -1882,7 +1883,7 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 		requireRealUserAuthentication();
 		
 		try {
-			LongAction<?> longAction = getBimServer().getLongActionManager().getLongAction(topicId);
+			LongAction longAction = getBimServer().getLongActionManager().getLongAction(topicId);
 			if (longAction instanceof WwbLongClashDetectorAction == false) {
 				throw new UserException("No data found for topicId " + topicId);
 			}
@@ -2722,7 +2723,7 @@ public class ServiceImpl extends GenericServiceImpl implements ServiceInterface 
 			CloseableHttpClient httpclient = HttpClients.createDefault();
 			HttpPost httpPost = new HttpPost(url);
 
-			LongAction<?> longAction = getBimServer().getLongActionManager().getLongAction(topicId);
+			LongAction longAction = getBimServer().getLongActionManager().getLongAction(topicId);
 			if (longAction == null) {
 				throw new UserException("No data found for topicId " + topicId);
 			}

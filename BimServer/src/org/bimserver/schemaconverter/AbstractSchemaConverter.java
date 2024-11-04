@@ -87,27 +87,39 @@ public abstract class AbstractSchemaConverter implements SchemaConverter {
 					}
 				} else {
 					if (eStructuralFeature.getEType() instanceof EEnum) {
-						EEnum targetEnum = (EEnum) targetFeature.getEType();
-						EEnumLiteral newLiteral = targetEnum.getEEnumLiteral(get.toString());
-						if (newLiteral != null) {
-							newObject.eSet(targetFeature, newLiteral.getInstance());
+						if(targetFeature.getEType() instanceof EEnum){
+							EEnum targetEnum = (EEnum) targetFeature.getEType();
+							EEnumLiteral newLiteral = targetEnum.getEEnumLiteral(get.toString());
+							if (newLiteral != null) {
+								newObject.eSet(targetFeature, newLiteral.getInstance());
+							}
+						} else {
+							LOGGER.info("Incompatible attribute type (enum source)");
 						}
 					} else {
 						if (targetFeature instanceof EAttribute) {
-							newObject.eSet(targetFeature, get);
+							if(((EAttribute) targetFeature).getEAttributeType().equals(((EAttribute) eStructuralFeature).getEAttributeType())){
+								newObject.eSet(targetFeature, get);
+							} else {
+								LOGGER.info("Different attribute types");
+								// e.g. EcorePackage.EBoolean or IfcxxPackage.IfcBoolean -> Tristate or vice versa (its a mess in the Ecores)
+							}
 						}
 					}
 				}
 			} else if (eStructuralFeature instanceof EReference) {
-				if (get == null) {
-				} else {
+				if (get != null) {
 					if (eStructuralFeature.isMany()) {
 						EList<EObject> list = (EList<EObject>) get;
 						AbstractEList<EObject> toList = (AbstractEList<EObject>) newObject.eGet(targetFeature);
 						if (toList != null) {
 							for (Object o : list) {
 								IdEObject ref = (IdEObject)o;
-								if (targetFeature.getEType().isInstance(ref)) {
+								// if (targetFeature.getEType().isInstance(ref)) {
+								EClass targetClass = target.getPackageMetaData().getEClass(ref.eClass().getName());
+								if (targetClass == null){
+									LOGGER.info("No class " + ref.eClass().getName() + " in " + target.getPackageMetaData().getEPackage().getName());
+								} else if( ((EReference)targetFeature).getEReferenceType().isSuperTypeOf(targetClass)){
 									if (converted.containsKey(o)) {
 										toList.addUnique(converted.get(o));
 									} else {
@@ -116,6 +128,10 @@ public abstract class AbstractSchemaConverter implements SchemaConverter {
 											toList.addUnique(result);
 										}
 									}
+								} else {
+									LOGGER.info("Incompatible reference types: " +
+										source.getPackageMetaData().getEPackage().getName() + " " + ref.eClass().getName() + ", " +
+										target.getPackageMetaData().getEPackage().getName() + " " + targetClass.getName());
 								}
 							}
 						}

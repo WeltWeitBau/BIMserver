@@ -19,7 +19,6 @@ import org.bimserver.emf.PackageMetaData;
 import org.bimserver.interfaces.objects.SProgressTopicType;
 import org.bimserver.interfaces.objects.SUser;
 import org.bimserver.longaction.LongAction;
-import org.bimserver.longaction.LongActionKey;
 import org.bimserver.models.store.ConcreteRevision;
 import org.bimserver.models.store.Revision;
 import org.bimserver.shared.HashMapVirtualObject;
@@ -28,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import de.weiltweitbau.geometry.Mesh;
 
-public class WwbLongCalculateQuantitiesAction extends LongAction<LongActionKey> {
+public class WwbLongCalculateQuantitiesAction extends LongAction {
 	private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(WwbLongCalculateQuantitiesAction.class);
 	
 	private static final String QUERY = "{"
@@ -72,7 +71,7 @@ public class WwbLongCalculateQuantitiesAction extends LongAction<LongActionKey> 
 		setProgressTopic(bimServer.getNotificationsManager().createProgressTopic(SProgressTopicType.RUNNING_SERVICE, "CalculateQuantities"));
 	}
 		
-	public WwbLongCalculateQuantitiesAction(LongAction<?> parent, long roid) {
+	public WwbLongCalculateQuantitiesAction(LongAction parent, long roid) {
 		super(parent.getBimServer(), parent.getUserName(), parent.getUserUsername(), parent.getAuthorization());
 		
 		this.roid = roid;

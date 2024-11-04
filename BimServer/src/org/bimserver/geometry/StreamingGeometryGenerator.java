@@ -64,9 +64,8 @@ import org.bimserver.emf.Schema;
 import org.bimserver.models.geometry.Bounds;
 import org.bimserver.models.geometry.GeometryPackage;
 import org.bimserver.models.geometry.Vector3f;
-import org.bimserver.models.store.RenderEnginePluginConfiguration;
-import org.bimserver.models.store.User;
-import org.bimserver.models.store.UserSettings;
+import org.bimserver.models.store.*;
+import org.bimserver.plugins.PluginConfiguration;
 import org.bimserver.plugins.renderengine.IndexFormat;
 import org.bimserver.plugins.renderengine.Precision;
 import org.bimserver.plugins.renderengine.RenderEngine;
@@ -90,6 +89,7 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 	static final Logger LOGGER = LoggerFactory.getLogger(StreamingGeometryGenerator.class);
 	
@@ -103,14 +103,14 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 	PackageMetaData packageMetaData;
 
 	AtomicLong bytesSavedByHash = new AtomicLong();
-	private AtomicLong bytesSavedByTransformation = new AtomicLong();
+	private final AtomicLong bytesSavedByTransformation = new AtomicLong();
 	AtomicLong bytesSavedByMapping = new AtomicLong();
 	AtomicLong totalBytes = new AtomicLong();
 
 	AtomicInteger jobsDone = new AtomicInteger();
-	private AtomicInteger jobsTotal = new AtomicInteger();
+	private final AtomicInteger jobsTotal = new AtomicInteger();
 
-	private ProgressListener progressListener;
+	private final ProgressListener progressListener;
 
 	private volatile boolean allJobsPushed;
 
@@ -243,13 +243,17 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 			report.setRenderEngineVersion(versionInfo);
 
 			// TODO there must be a cleaner way of getting this info, since it's in the database...
+			// The render engine plugin settings from the database are here: renderEngine.getSettings();
+			// But the layerset handling and quantity calculation must not necessarily be configurable and if it is
+			// then the plugin can name the settings randomly. But for the report, all the settings should be used.
 			RenderEngine engine = renderEnginePool.borrowObject();
 			try {
 				applyLayerSets = engine.isApplyLayerSets();
-				report.setApplyLayersets(applyLayerSets);
-
 				calculateQuantities = engine.isCalculateQuantities();
+				report.setApplyLayersets(applyLayerSets);
 				report.setCalculateQuantities(calculateQuantities);
+				report.setUserRenderSetting(new PluginConfiguration(renderEngine.getPluginDescriptor().getSettings()));
+
 			} finally {
 				renderEnginePool.returnObject(engine);
 			}
@@ -444,15 +448,20 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 
 										            a2 = yAxis;
 										            a1 = xAxis;
-													
-													double[] scale = getTransformationScalingVector(mappingTarget);
-													
+
+													Double scale1 = (Double) mappingTarget.get("Scale");
+													Double scale2 = (Double) mappingTarget.get("Scale2");
+													Double scale3 = (Double) mappingTarget.get("Scale3");
+													if (scale1 == null) scale1 = 1.0;    // undefined
+													if (scale2 == null) scale2 = scale1; // undefined or uniform entity type
+													if (scale3 == null) scale3 = scale1; // undefined or uniform entity type
+
 													List<Double> t = (List<Double>)localOrigin.get("Coordinates");
 													mappingMatrix = new double[]{
-														a1[0] * scale[0], a1[1], a1[2], 0,
-														a2[0], a2[1] * scale[1], a2[2], 0,
-														a3[0], a3[1], a3[2] * scale[2], 0,
-														t.get(0).doubleValue(), t.get(1).doubleValue(), t.get(2).doubleValue(), 1
+														a1[0] * scale1, a1[1], a1[2], 0,
+														a2[0], a2[1] * scale2, a2[2], 0,
+														a3[0], a3[1], a3[2] * scale3, 0,
+														t.get(0), t.get(1), t.get(2), 1
 													};
 												}
 												
@@ -740,36 +749,6 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 		}
 		
 		values.stream().forEach(allValues::add);
-	}
-	
-	private double[] getTransformationScalingVector(AbstractHashMapVirtualObject mappingTarget) {
-		if(nonUniformScalingClass.isSuperTypeOf(mappingTarget.eClass())) {
-			return new double[] {
-					getTransformationScale(mappingTarget, "Scale"),
-					getTransformationScale(mappingTarget, "Scale2"),
-					getTransformationScale(mappingTarget, "Scale3"),
-			};
-		} else {
-			double scale = getTransformationScale(mappingTarget, "Scale");
-			return new double[] {
-					scale,
-					scale,
-					scale,
-			};
-		}
-	}
-	
-	private double getTransformationScale(AbstractHashMapVirtualObject mappingTarget, String key) {
-		Object scale = mappingTarget.get(key);
-		if(scale instanceof Double) {
-			return (Double) scale;
-		}
-		
-		if(!key.equals("Scale")) {
-			return getTransformationScale(mappingTarget, "Scale");
-		}
-		
-		return 1;
 	}
 	
 	private double[] createQuantizationMatrixFromBounds(Bounds bounds, float multiplierToMm) {

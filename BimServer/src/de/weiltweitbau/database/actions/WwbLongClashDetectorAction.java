@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-public class WwbLongClashDetectorAction extends LongAction<WwbClashDetectionParameters> {
+public class WwbLongClashDetectorAction extends LongAction {
 	private static final Logger LOGGER = LoggerFactory.getLogger(WwbClashDetectorAction.class);
 
 	private WwbClashDetectionParameters params;

@@ -49,7 +49,7 @@ import org.bimserver.webservices.authorization.Authorization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class LongDownloadOrCheckoutAction extends LongAction<DownloadParameters> implements Reporter {
+public abstract class LongDownloadOrCheckoutAction extends LongAction implements Reporter {
 	protected static final Logger LOGGER = LoggerFactory.getLogger(LongDownloadAction.class);
 	protected final AccessMethod accessMethod;
 	protected final DownloadParameters downloadParameters;
@@ -77,7 +77,7 @@ public abstract class LongDownloadOrCheckoutAction extends LongAction<DownloadPa
 			try {
 				Serializer serializer = getBimServer().getSerializerFactory().create(project, username, model, renderEnginePlugin, downloadParameters);
 				if (serializer == null) {
-					throw new UserException("Error, no serializer found " + downloadParameters.getSerializerOid());
+					throw new UserException("Error, serializer " + downloadParameters.getSerializerOid() + "not found or failed to intialize.");
 				}
 				if (getBimServer().getServerSettingsCache().getServerSettings().getCacheOutputFiles() && serializer.allowCaching()) {
 					if (getBimServer().getDiskCacheManager().contains(downloadParameters)) {

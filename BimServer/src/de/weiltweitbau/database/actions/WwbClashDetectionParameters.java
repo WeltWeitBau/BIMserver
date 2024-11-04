@@ -3,11 +3,10 @@ package de.weiltweitbau.database.actions;
 import org.bimserver.BimServer;
 import org.bimserver.database.DatabaseSession;
 import org.bimserver.interfaces.objects.SUser;
-import org.bimserver.longaction.LongActionKey;
 import org.bimserver.models.log.AccessMethod;
 import org.bimserver.webservices.authorization.Authorization;
 
-public class WwbClashDetectionParameters extends LongActionKey {
+public class WwbClashDetectionParameters {
 	private BimServer bimServer;
 	private AccessMethod accessMethod;
 	private DatabaseSession session;

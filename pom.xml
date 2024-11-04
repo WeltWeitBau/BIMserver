@@ -13,7 +13,7 @@
 		<url>https://github.com/WeltWeitBau/BIMserver.git</url>
 		<connection>scm:git:https://github.com/WeltWeitBau/BIMserver.git</connection>
 		<developerConnection>scm:git:https://github.com/WeltWeitBau/BIMserver.git</developerConnection>
-		<tag>v1.3.3</tag>
+		<tag>v1.3.8</tag>
 	</scm>
 	<organization>
 		<name>OpenSource BIM</name>
