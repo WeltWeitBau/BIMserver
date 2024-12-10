@@ -99,14 +99,7 @@ public class QueryIncludeStackFrame extends DatabaseReadingStackFrame {
 				List<Long> list = (List<Long>)value;
 				for (Object element: list) {
 					if (element instanceof Long) {
-						if (directFeatureSet != null && directFeatureSet.contains(feature)) {
-							HashMapVirtualObject byOid = getByOid((long)element, true);
-							getQueryObjectProvider().addRead(byOid.getOid());
-							currentObject.addDirectListReference(feature, byOid);
-							processPossibleIncludes(byOid, byOid.eClass(), include);
-						} else {
-							processReference((Long)element);
-						}
+						processLongFeature((Long) element, true);
 					} else if (element instanceof HashMapVirtualObject && feature.getEAnnotation("twodimensionalarray")!=null) {
 						for ( Object nestedElement :(List)((HashMapVirtualObject) element).get("List")){
 							if(nestedElement instanceof Long){
@@ -120,15 +113,7 @@ public class QueryIncludeStackFrame extends DatabaseReadingStackFrame {
 				}
 			} else {
 				if (value instanceof Long) {
-					long refOid = (Long) value;
-					if (directFeatureSet != null && directFeatureSet.contains(feature)) {
-						HashMapVirtualObject byOid = getByOid((Long)refOid, true);
-						getQueryObjectProvider().addRead(byOid.getOid());
-						currentObject.setDirectReference(feature, byOid);
-						processPossibleIncludes(byOid, byOid.eClass(), include);
-					} else {
-						processReference(refOid);
-					}
+					processLongFeature((Long) value, false);
 				} else if (value instanceof WrappedVirtualObject) {
 					// ??
 				}
@@ -136,6 +121,28 @@ public class QueryIncludeStackFrame extends DatabaseReadingStackFrame {
 		}
 		
 		return !featureIterator.hasNext();
+	}
+	
+	private void processLongFeature(long featureRef, boolean isList) throws BimserverDatabaseException, QueryException  {
+		if (directFeatureSet != null && directFeatureSet.contains(feature)) {
+			HashMapVirtualObject byOid = getByOid(featureRef, true);
+			
+			getQueryObjectProvider().addRead(featureRef);
+			
+			if(isList) {
+				currentObject.addDirectListReference(feature, byOid);
+			} else {
+				currentObject.setDirectReference(feature, byOid);
+			}
+			
+			if(getQueryObjectProvider().hasCached(featureRef)) {
+				return;
+			}
+			
+			processPossibleIncludes(byOid, byOid.eClass(), include);
+		} else {
+			processReference(featureRef);
+		}
 	}
 
 	private void processReference(long refOid) {

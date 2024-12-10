@@ -61,6 +61,7 @@ public class QueryObjectProvider implements ObjectProvider {
 	private BimServer bimServer;
 	
 	private final Set<Long> oidsRead = new LongOpenHashSet();
+	private final Set<Long> oidsCached = new LongOpenHashSet();
 	private Deque<StackFrame> stack;
 	private long start = -1;
 	private long reads = 0;
@@ -230,6 +231,10 @@ public class QueryObjectProvider implements ObjectProvider {
 	public boolean hasRead(long oid) {
 		return oidsRead.contains(oid);
 	}
+	
+	public boolean hasCached(long oid) {
+		return oidsCached.contains(oid);
+	}
 
 	public void push(StackFrame stackFrame) {
 		if (!stackFrame.isDone()) {
@@ -286,6 +291,10 @@ public class QueryObjectProvider implements ObjectProvider {
 
 	public void addRead(long oid) {
 		oidsRead.add(oid);
+	}
+	
+	public void addCached(long oid) {
+		oidsCached.add(oid);
 	}
 
 	@Override

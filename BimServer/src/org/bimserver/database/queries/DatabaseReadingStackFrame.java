@@ -142,20 +142,11 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 				if (ref != null) {
 					if (ref instanceof List) {
 						for (Long r : (List<Long>)ref) {
-							HashMapVirtualObject byOid = getByOid(r, true);
-							int index = object.addDirectListReference(eReference, byOid);
-							object.addUseForSerialization(eReference, index);
-							processPossibleIncludes(byOid, byOid.eClass(), include);
+							processLongRef(object, r, eReference, include, true);
 						}
 					} else {
 						if (ref instanceof Long) {
-							HashMapVirtualObject byOid = getByOid((Long)ref, true);
-							if (byOid == null) {
-								throw new BimserverDatabaseException("Object with oid " + ref + " not found (" + queryObjectProvider.getDatabaseSession().getEClassForOid((Long)ref).getName() + ")");
-							}
-							object.setDirectReference(eReference, byOid);
-							object.addUseForSerialization(eReference);
-							processPossibleIncludes(byOid, byOid.eClass(), include);
+							processLongRef(object, (Long) ref, eReference, include, false);
 						} else {
 							object.setDirectReference(eReference, (HashMapWrappedVirtualObject)ref);
 						}
@@ -163,6 +154,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 				}
 			}
 		}
+		
 		if (include.hasFields() && !include.isExclude()) {
 			for (EStructuralFeature eStructuralFeature : include.getFields()) {
 				object.addUseForSerialization(eStructuralFeature);
@@ -170,6 +162,28 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		}
 
 		getQueryObjectProvider().push(new QueryIncludeStackFrame(getQueryObjectProvider(), getReusable(), previousInclude, include, object, queryPart));
+	}
+	
+	private void processLongRef(HashMapVirtualObject object, long ref, EReference eReference, Include include, boolean isList)
+			throws BimserverDatabaseException, QueryException {
+		HashMapVirtualObject byOid = getByOid(ref, true);
+		if (byOid == null) {
+			throw new BimserverDatabaseException("Object with oid " + ref + " not found (" + queryObjectProvider.getDatabaseSession().getEClassForOid((Long)ref).getName() + ")");
+		}
+		
+		if(isList) {
+			object.addDirectListReference(eReference, byOid);
+		} else {
+			object.setDirectReference(eReference, byOid);
+		}
+		
+		object.addUseForSerialization(eReference);
+		
+		if(getQueryObjectProvider().hasCached(ref) ) {
+			return;
+		}
+		
+		processPossibleIncludes(byOid, byOid.eClass(), include);
 	}
 	
 	public GetResult getMap(EClass originalQueryClass, EClass eClass, ByteBuffer buffer, int keyPid, long keyOid, int keyRid) throws BimserverDatabaseException {
@@ -505,8 +519,10 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	public HashMapVirtualObject getByOid(long oid, boolean useCache) throws BimserverDatabaseException {
 		HashMapVirtualObject byOid = getQueryObjectProvider().getFromCache((long)oid);
 		if (byOid != null) {
+			getQueryObjectProvider().addCached(oid);
 			return byOid;
 		}
+		
 		EClass eClass = getQueryObjectProvider().getDatabaseSession().getEClassForOid(oid);
 		ByteBuffer mustStartWith = ByteBuffer.wrap(new byte[12]);
 		mustStartWith.putInt(reusable.getPid());
@@ -539,6 +555,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 					if (byOid != null && useCache) {
 						getQueryObjectProvider().cache(byOid);
 					}
+					
 					return byOid;
 				}
 			} else {
@@ -646,6 +663,10 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		}
 
 		List<Long> properties = (List<Long>) ifcPropertySet.get("HasProperties");
+		if(properties == null) {
+			return;
+		}
+		
 		for (long propertyOid : properties) {
 			eClassForOid = databaseSession.getEClassForOid(propertyOid);
 			if (matchesType(eClassForOid, "IfcPropertySingleValue") == false) {
