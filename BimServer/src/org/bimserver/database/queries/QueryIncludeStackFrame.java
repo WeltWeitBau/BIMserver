@@ -101,7 +101,12 @@ public class QueryIncludeStackFrame extends DatabaseReadingStackFrame {
 					if (element instanceof Long) {
 						processLongFeature((Long) element, true);
 					} else if (element instanceof HashMapVirtualObject && feature.getEAnnotation("twodimensionalarray")!=null) {
-						for ( Object nestedElement :(List)((HashMapVirtualObject) element).get("List")){
+						HashMapVirtualObject virtualObject = (HashMapVirtualObject) element;
+						if(virtualObject.eClass().getName().equals("ListOfELong")) {
+							return !featureIterator.hasNext();
+						}
+						
+						for ( Object nestedElement :(List)virtualObject.get("List")){
 							if(nestedElement instanceof Long){
 								processReference((Long) nestedElement);
 								// TODO process as direct feature?
