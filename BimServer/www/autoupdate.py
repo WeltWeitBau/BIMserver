@@ -10,15 +10,26 @@ import sys
 import time
 import zipfile
 import shutil
+import argparse
 
 def main():
     """The Main function"""
+
+    parser = argparse.ArgumentParser("autoupdate")
+    parser.add_argument("-g", "--github", help="install patch from github", action='store_true')
+    parser.add_argument("-s", "--silentexit", action='store_true', help="exit wihtout userinput")
+    args = parser.parse_args()
 
     try:
         localPatch = getLocalPatchFile()
         if localPatch.is_file():
             print('updating from local file')
             replaceFiles(localPatch)
+            os.remove(localPatch)
+            return
+        
+        if not args.github:
+            print('no local file found!')
             return
 
         currentVersionName = getCurrentVersion()
@@ -34,7 +45,8 @@ def main():
     except:
         print("Something went wrong")
     finally:
-        input("press enter!")
+        if not args.silentexit:
+            input("press enter!")
 
 def getLocalPatchFile():
     currentPath = pathlib.Path(__file__).parent.resolve()
