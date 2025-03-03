@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import de.weiltweitbau.database.actions.WwbLongClashDetectorAction.ClashDetectionProgressHandler;
 import de.weiltweitbau.database.actions.clashes.ClashDetectorRules.Combinations;
 import de.weiltweitbau.geometry.BooleanMeshOperations;
+import de.weiltweitbau.geometry.BooleanMeshOperationsJavascad;
 import de.weiltweitbau.geometry.Mesh;
 import de.weiltweitbau.geometry.Octree;
 import de.weiltweitbau.geometry.Octree.OctreeException;
@@ -91,6 +92,11 @@ public class ClashDetector {
 	private Set<Combination> combinationToIgnore = new HashSet<>();
 	private Set<Combination> combinationToCheck = new HashSet<>();
 	private Set<String> typesToOnlyCheckWithOwnType = new HashSet<>();
+	
+	private Set<Combination> combinationToIgnoreIfcClass = new HashSet<>();
+	private Set<Combination> combinationToCheckIfcClass = new HashSet<>();
+	private Set<String> typesToOnlyCheckWithOwnTypeIfcClass = new HashSet<>();
+	
 	private double epsilon;
 	private final boolean bCheckAgainstSelf;
 	private Set<Long> checkedOids;
@@ -112,21 +118,24 @@ public class ClashDetector {
 
 	private void configureRules() {
 		if (!rules.isSkipDefaultRules()) {
-			typesToOnlyCheckWithOwnType.add("IfcSpace");
-			typesToOnlyCheckWithOwnType.add("IfcSite");
+			typesToOnlyCheckWithOwnTypeIfcClass.add("IfcSpace");
+			typesToOnlyCheckWithOwnTypeIfcClass.add("IfcSite");
 
-			combinationToIgnore.add(new Combination("IfcWall", "IfcOpeningElement"));
-			combinationToIgnore.add(new Combination("IfcWallStandardCase", "IfcOpeningElement"));
-			combinationToIgnore.add(new Combination("IfcSlab", "IfcOpeningElement"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcWall", "IfcOpeningElement"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcWallStandardCase", "IfcOpeningElement"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcSlab", "IfcOpeningElement"));
 
-			combinationToIgnore.add(new Combination("IfcWall", "IfcWindow"));
-			combinationToIgnore.add(new Combination("IfcWallStandardCase", "IfcWindow"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcWall", "IfcWindow"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcWallStandardCase", "IfcWindow"));
 
-			combinationToIgnore.add(new Combination("IfcWall", "IfcDoor"));
-			combinationToIgnore.add(new Combination("IfcWallStandardCase", "IfcDoor"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcWall", "IfcDoor"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcWallStandardCase", "IfcDoor"));
 
-			combinationToIgnore.add(new Combination("IfcOpeningElement", "IfcWindow"));
-			combinationToIgnore.add(new Combination("IfcOpeningElement", "IfcDoor"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcOpeningElement", "IfcWindow"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcOpeningElement", "IfcDoor"));
+			
+			combinationToIgnoreIfcClass.add(new Combination("IfcReinforcingBar", "*"));
+			combinationToIgnoreIfcClass.add(new Combination("IfcReinforcingMesh", "*"));
 		}
 
 		for (String onlyCheckWithOwnType : rules.getOnlyCheckWithOwnType()) {
@@ -176,6 +185,7 @@ public class ClashDetector {
 		LOGGER.info("With geometry: " + clashDetectionResults.nrWithGeometry);
 		LOGGER.info("Without geometry: " + clashDetectionResults.nrWithoutGeometry);
 		LOGGER.info("With open geometry: " + clashDetectionResults.nrWithOpenGeometry);
+		LOGGER.info("With invalid geometry: " + clashDetectionResults.clashVolumeErrors);
 		LOGGER.info("Not enough data: " + clashDetectionResults.notEnoughData);
 		LOGGER.info("Clashes: " + clashDetectionResults.size());
 
@@ -213,7 +223,7 @@ public class ClashDetector {
 		});
 		
 		clashDetectionResults.nrWithGeometry = clashDetectionResults.checkedCombinations;
-		clashDetectionResults.nrWithoutGeometry = geomtryModel1.products.size() - clashDetectionResults.nrWithGeometry;
+		clashDetectionResults.nrWithoutGeometry = clashDetectionResults.totalCombinations - clashDetectionResults.nrWithGeometry;
 	}
 	
 	private void checkNodeValue1(Octree<IfcProductOctreeValue> node, IfcProductOctreeValue value1) {
@@ -224,7 +234,7 @@ public class ClashDetector {
 		double[] minmax = value1.minmax;
 
 		node.traverseUpAndBreadthFirstDown((childNode -> {
-			boolean skipValues = !childNode.fits(minmax);
+			boolean skipValues = !childNode.clashes(minmax);
 			
 			for(IfcProductOctreeValue value2 : childNode.getValues()) {
 				if(value2.isModel1) {
@@ -264,6 +274,10 @@ public class ClashDetector {
 	private void checkNodeValue1AgainstNodeValue2(IfcProductOctreeValue value1, IfcProductOctreeValue value2) {
 		HashMapVirtualObject ifcProduct1 = value1.ifcProduct;
 		HashMapVirtualObject ifcProduct2 = value2.ifcProduct;
+		
+		if(clashDetectionResults.hasClash(ifcProduct1, ifcProduct2)) {
+			return;
+		}
 		
 		if (bCheckAgainstSelf && checkedOids.contains(ifcProduct2.getOid())) {
 			return;
@@ -377,9 +391,23 @@ public class ClashDetector {
 
 		String type1 = types.get(ifcProduct1.getOid());
 		String type2 = types.get(ifcProduct2.getOid());
+		
+		String ifcClass1 = ifcProduct1.eClass().getName();
+		String ifcClass2 = ifcProduct2.eClass().getName();
+		
+		return shouldCheckTypes(type1, type2, combinationToIgnore, combinationToCheck, typesToOnlyCheckWithOwnType)
+				&& shouldCheckTypes(ifcClass1, ifcClass2, combinationToIgnoreIfcClass, combinationToCheckIfcClass, typesToOnlyCheckWithOwnTypeIfcClass);
+	}
+	
+	private boolean shouldCheckTypes(String type1, String type2, Set<Combination> combinationToIgnore, Set<Combination> combinationToCheck, Set<String> typesToOnlyCheckWithOwnType) {
 		Combination combination = new Combination(type1, type2);
+		Combination combinationWildcard1 = new Combination(type1, "*");
+		Combination combinationWildcard2 = new Combination(type2, "*");
 
-		if (combinationToCheck != null && !combinationToCheck.isEmpty() && !combinationToCheck.contains(combination)) {
+		if (combinationToCheck != null && !combinationToCheck.isEmpty()
+				&& !combinationToCheck.contains(combination)
+				&& !combinationToCheck.contains(combinationWildcard1)
+				&& !combinationToCheck.contains(combinationWildcard2)) {
 			return false;
 		}
 		
@@ -388,7 +416,9 @@ public class ClashDetector {
 			return false;
 		}
 
-		if (combinationToIgnore.contains(combination)) {
+		if (combinationToIgnore.contains(combination)
+				|| combinationToIgnore.contains(combinationWildcard1)
+				|| combinationToIgnore.contains(combinationWildcard2)) {
 			return false;
 		}
 
@@ -402,6 +432,10 @@ public class ClashDetector {
 		
 		String property = rules.getProperty();
 		String propertySet = rules.getPropertySet();
+		
+		if(propertySet != null && propertySet.equals("Ifc")) {
+			return ifcProduct.get(property).toString();
+		}
 		
 		if(ifcProduct.getAdditionalData() == null || ifcProduct.getAdditionalData().get("includedProperties") == null) {
 			return "";
@@ -474,7 +508,12 @@ public class ClashDetector {
 	private ClashVolume computeClashVolume(Mesh mesh1, Mesh mesh2) {
 		Mesh intersection;
 		try {
-			intersection = BooleanMeshOperations.intersection(mesh1, mesh2);
+			if(mesh1.getIndices().limit() > 50000 || mesh2.getIndices().limit() > 50000) {
+				intersection = BooleanMeshOperations.hullIntersection(mesh1, mesh2);
+			} else {
+				intersection = BooleanMeshOperations.intersection(mesh1, mesh2);
+			}
+			
 			return new ClashVolume(intersection);
 		} catch (Throwable e) {
 			clashDetectionResults.clashVolumeErrors++;

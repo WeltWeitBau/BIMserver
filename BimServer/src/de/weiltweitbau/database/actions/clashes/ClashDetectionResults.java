@@ -57,6 +57,15 @@ public class ClashDetectionResults {
 		add(clashesRight, ifcProduct1, ifcProduct2);
 	}
 	
+	public boolean hasClash(HashMapVirtualObject ifcProduct1, HashMapVirtualObject ifcProduct2) {
+		Set<Long> clashesWith = clashesLeft.get(ifcProduct1.getOid());
+		if(clashesWith == null) {
+			return false;
+		}
+		
+		return clashesWith.contains(ifcProduct2.getOid());
+	}
+	
 	private void add(Map<Long, Set<Long>> clashes, IdEObject ifcProduct1, IdEObject ifcProduct2) {
 		Set<Long> clashesWith = clashes.get(ifcProduct1.getOid());
 

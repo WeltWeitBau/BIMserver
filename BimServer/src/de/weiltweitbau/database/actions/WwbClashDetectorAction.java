@@ -126,7 +126,7 @@ public class WwbClashDetectorAction extends BimDatabaseAction<ObjectNode> {
 		try {
 			Revision revision = session.get(roid, OldQuery.getDefault());
 			
-			double multiplierToM = revision.getLastConcreteRevision().getMultiplierToMm() / 1000;
+			double multiplierToM = ((double) revision.getLastConcreteRevision().getMultiplierToMm()) / 1000;
 
 			QueryObjectProvider queryProvider = createQueryProvider(revision, session);
 			GeometryModel model = GeometryModel.fromQueryProvider(queryProvider, multiplierToM);
