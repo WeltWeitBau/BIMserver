@@ -233,38 +233,44 @@ public class ClashDetector {
 		
 		double[] minmax = value1.minmax;
 
-		node.traverseUpAndBreadthFirstDown((childNode -> {
-			boolean skipValues = !childNode.clashes(minmax);
-			
-			for(IfcProductOctreeValue value2 : childNode.getValues()) {
-				if(value2.isModel1) {
-					continue;
-				}
-				
-				clashDetectionResults.checkedCombinations++;
-				
-				if (System.nanoTime() - clashDetectionResults.lastDump > 1000000000L) {
-					LOGGER.info((clashDetectionResults.checkedCombinations * 100f / clashDetectionResults.totalCombinations) + "%");
-					clashDetectionResults.lastDump = System.nanoTime();
-					
-					if(isCancled()) {
-						return false;
-					}
-					
-					if(progressHandler != null) {
-						progressHandler.progress(clashDetectionResults.checkedCombinations, clashDetectionResults.totalCombinations);
-					}
-				}
-				
-				if(skipValues) {
-					continue;
-				}
-				
-				checkNodeValue1AgainstNodeValue2(value1, value2);
+		node.traverseUp((parentNode -> {
+			return checkNodeValues2(parentNode, value1, !parentNode.fitsInto(minmax));
+		}));
+		
+		node.traverseBreadthFirst((childNode -> {
+			return checkNodeValues2(childNode, value1, !childNode.fits(minmax));
+		}));
+	}
+	
+	private boolean checkNodeValues2(Octree<IfcProductOctreeValue> node, IfcProductOctreeValue value1, boolean skipValues) {
+		for(IfcProductOctreeValue value2 : node.getValues()) {
+			if(value2.isModel1) {
+				continue;
 			}
 			
-			return true;
-		}));
+			clashDetectionResults.checkedCombinations++;
+			
+			if (System.nanoTime() - clashDetectionResults.lastDump > 1000000000L) {
+				LOGGER.info((clashDetectionResults.checkedCombinations * 100f / clashDetectionResults.totalCombinations) + "%");
+				clashDetectionResults.lastDump = System.nanoTime();
+				
+				if(isCancled()) {
+					return false;
+				}
+				
+				if(progressHandler != null) {
+					progressHandler.progress(clashDetectionResults.checkedCombinations, clashDetectionResults.totalCombinations);
+				}
+			}
+			
+			if(skipValues) {
+				continue;
+			}
+			
+			checkNodeValue1AgainstNodeValue2(value1, value2);
+		}
+		
+		return true;
 	}
 	
 	private boolean isCancled() {
@@ -283,11 +289,11 @@ public class ClashDetector {
 			return;
 		}
 
-		if (!shouldCheck(ifcProduct1, ifcProduct2)) {
+		if (!boundingBoxesClash(value1.minmax, value2.minmax)) {
 			return;
 		}
-
-		if (!boundingBoxesClash(value1.minmax, value2.minmax)) {
+		
+		if (!shouldCheck(ifcProduct1, ifcProduct2)) {
 			return;
 		}
 

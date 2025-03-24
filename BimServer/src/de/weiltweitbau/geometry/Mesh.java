@@ -137,7 +137,7 @@ public class Mesh {
 	}
 	
 	public boolean computeIsClosed() {
-		PositionStorage store = new PositionStorage(0.000001);
+		PositionStorage store = new PositionStorage(0.001);
 		
 		indices = IntBuffer.allocate(getTriangleCount() * 3);
 		

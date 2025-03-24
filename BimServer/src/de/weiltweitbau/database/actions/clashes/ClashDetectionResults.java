@@ -165,7 +165,7 @@ public class ClashDetectionResults {
 	private ObjectNode getClashMeshesAsJson() {
 		ObjectNode objectNode = OBJECT_MAPPER.createObjectNode();
 		
-		PositionStorage positionStorage = new PositionStorage(0.0001);
+		PositionStorage positionStorage = new PositionStorage(0.001);
 		ArrayNode indices = OBJECT_MAPPER.createArrayNode();
 		ObjectNode visibleRanges = OBJECT_MAPPER.createObjectNode();
 		ObjectNode volumes = OBJECT_MAPPER.createObjectNode();

@@ -245,13 +245,15 @@ public class Octree <T extends OctreeValue> {
 	}
 	
 	public boolean fits(double[] minmax) {
-		if(minmax[0] >= minX && minmax[3] <= maxX
-				&& minmax[1] >= minY && minmax[4] <= maxY
-				&& minmax[2] >= minZ && minmax[5] <= maxZ) {
-			return true;
-		}
-		
-		return false;
+		return GeometryUtils.greaterThanOrAlmostEqual(minmax[0], minX) && GeometryUtils.lessThanOrAlmostEqual(minmax[3], maxX)
+				&& GeometryUtils.greaterThanOrAlmostEqual(minmax[1], minY) && GeometryUtils.lessThanOrAlmostEqual(minmax[4], maxY)
+				&& GeometryUtils.greaterThanOrAlmostEqual(minmax[2], minZ) && GeometryUtils.lessThanOrAlmostEqual(minmax[5], maxZ);
+	}
+	
+	public boolean fitsInto(double[] minmax) {
+		return GeometryUtils.lessThanOrAlmostEqual(minmax[0], minX) && GeometryUtils.greaterThanOrAlmostEqual(minmax[3], maxX)
+				&& GeometryUtils.lessThanOrAlmostEqual(minmax[1], minY) && GeometryUtils.greaterThanOrAlmostEqual(minmax[4], maxY)
+				&& GeometryUtils.lessThanOrAlmostEqual(minmax[2], minZ) && GeometryUtils.greaterThanOrAlmostEqual(minmax[5], maxZ);
 	}
 	
 	public boolean clashes(double[] minmax) {
