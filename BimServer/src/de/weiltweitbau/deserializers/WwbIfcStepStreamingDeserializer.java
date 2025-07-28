@@ -52,6 +52,7 @@ import org.bimserver.shared.WaitingVirtualObject;
 import org.bimserver.shared.WrappedVirtualObject;
 import org.bimserver.utils.FakeClosingInputStream;
 import org.bimserver.utils.StringUtils;
+import org.bimserver.webservices.impl.RestartableInputStream;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
@@ -98,6 +99,9 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 	private Map<Long, Long> mappedObjects;
 	private QueryContext reusable;
 	private IfcHeader ifcHeader;
+	
+//	private ByteBufferVirtualObject byteBufferVirtualObject;
+//	private List<ByteBufferVirtualObject> byteBufferVirtualObjectPool = new LinkedList<>();
 
 	private static MetricCollector metricCollector = new MetricCollector();
 
@@ -183,8 +187,57 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 			return numberOfEntitiesRead;
 		}
 	}
+	
+	private void readAndMapExpressIds(RestartableInputStream inputStream) {
+		try(BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8))) {
+			String line = reader.readLine();
+			while (line != null) {
+				if(!line.startsWith("#")) {
+					line = reader.readLine();
+					continue;
+				}
+				
+				int equalSignLocation = line.indexOf("=");
+				int lastIndexOfSemiColon = line.lastIndexOf(";");
+				if (lastIndexOfSemiColon == -1) {
+					line = reader.readLine();
+					continue;
+				}
+				int indexOfFirstParen = line.indexOf("(", equalSignLocation);
+				if (indexOfFirstParen == -1) {
+					line = reader.readLine();
+					continue;
+				}
+				
+				long expressId = Long.parseLong(line.substring(1, equalSignLocation).trim());
+				String name = line.substring(equalSignLocation + 1, indexOfFirstParen).trim();
+				EClass eClass = (EClass) getPackageMetaData().getEClassifierCaseInsensitive(name);
+				if(eClass == null) {
+					line = reader.readLine();
+					continue;
+				}
+				
+				long lOid = reusable.getDatabaseInterface().newOid(eClass);
+				mappedObjects.put(expressId, lOid);
+				
+				line = reader.readLine();
+			}
+		} catch (Exception e) {
+			LOGGER.error("Error while mapping expressIds", e);
+		}
+		
+		try {
+			inputStream.restartIfAtEnd();
+		} catch (Exception e) {
+			LOGGER.error("Error while resetting inputstream", e);
+		}
+	}
 
 	private long read(InputStream inputStream, long fileSize) throws DeserializeException {
+		if(inputStream instanceof RestartableInputStream) {
+			readAndMapExpressIds((RestartableInputStream) inputStream);
+		}
+		
 		BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
 		long bytesRead = 0;
 		lineNumber = 0;
@@ -348,8 +401,39 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 	}
 
 	private VirtualObject newVirtualObject(EClass eClass, int lineLength) {
-		return new ByteBufferVirtualObject(reusable, eClass, metricCollector.estimateRequiredBytes(lineLength));
+		return new ByteBufferVirtualObject(reusable, null, eClass, metricCollector.estimateRequiredBytes(lineLength));
 	}
+
+	private VirtualObject newVirtualObject(EClass eClass, Long lOid, int lineLength) {
+		return new ByteBufferVirtualObject(reusable, lOid, eClass, metricCollector.estimateRequiredBytes(lineLength));
+//		if(byteBufferVirtualObject == null) {
+//			byteBufferVirtualObject = new ByteBufferVirtualObject(reusable, lOid, eClass, metricCollector.estimateRequiredBytes(lineLength));
+//		} else {
+//			byteBufferVirtualObject.reset(reusable, lOid, eClass, lineLength);
+//		}
+//		
+//		return byteBufferVirtualObject;
+		
+//		ByteBufferVirtualObject pooledObject = getPooledByteBufferVirtualObject();
+//		if(pooledObject != null) {
+//			pooledObject.reset(reusable, lOid, eClass, lineLength);
+//			return pooledObject;
+//		}
+//		
+//		pooledObject = new ByteBufferVirtualObject(reusable, lOid, eClass, metricCollector.estimateRequiredBytes(lineLength));
+//		byteBufferVirtualObjectPool.add(pooledObject);
+//		return pooledObject;
+	}
+	
+//	private ByteBufferVirtualObject getPooledByteBufferVirtualObject() {
+//		for(ByteBufferVirtualObject virtualObject : byteBufferVirtualObjectPool) {
+//			if(virtualObject.isDisposed()) {
+//				return virtualObject;
+//			}
+//		}
+//		
+//		return null;
+//	}
 
 	private ByteBufferWrappedVirtualObject newWrappedVirtualObject(EClass eClass) {
 		return new ByteBufferWrappedVirtualObject(reusable, eClass);
@@ -384,7 +468,7 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 					name + " is not a known entity");
 		}
 
-		VirtualObject object = newVirtualObject(eClass, line.length());
+		VirtualObject object = newVirtualObject(eClass, mappedObjects.get(recordNumber), line.length());
 
 		AtomicInteger atomicInteger = summaryMap.get(eClass.getName());
 		if (atomicInteger == null) {
@@ -504,6 +588,10 @@ public class WwbIfcStepStreamingDeserializer implements StreamingDeserializer {
 				int nrBytes = getDatabaseInterface().save(object);
 				metricCollector.collect(line.length(), nrBytes);
 			}
+			
+//			if(object instanceof ByteBufferVirtualObject) {
+//				((ByteBufferVirtualObject) object).dispose();
+//			}
 		}
 	}
 	
