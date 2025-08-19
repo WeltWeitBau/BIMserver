@@ -594,15 +594,15 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		for (Long definedByOid : isDefinedByOids) {
 			EClass eClass = databaseSession.getEClassForOid(definedByOid);
 			if (getPackageMetaData().getEClass("IfcRelDefinesByProperties").isSuperTypeOf(eClass)) {
-				HashMapVirtualObject ifcRelDefinesByProperties = getByOid(definedByOid);
+				HashMapVirtualObject ifcRelDefinesByProperties = getByOid(definedByOid, true);
 				Long ifcPropertySetDefinition = (Long) ifcRelDefinesByProperties.get("RelatingPropertyDefinition");
 				processPropertySet(databaseSession, includedProperties, ifcPropertySetDefinition);
 			} else if (getPackageMetaData().getEClass("IfcRelDefinesByType").isSuperTypeOf(eClass)) {
-				HashMapVirtualObject ifcRelDefinesByType = getByOid(definedByOid);
+				HashMapVirtualObject ifcRelDefinesByType = getByOid(definedByOid, true);
 				Long relatingTypeId = (Long) ifcRelDefinesByType.get("RelatingType");
 				EClass eClassForOid = databaseSession.getEClassForOid(relatingTypeId);
 				if (getPackageMetaData().getEClass("IfcTypeObject").isSuperTypeOf(eClassForOid)) {
-					HashMapVirtualObject ifcTypeObject = getByOid(relatingTypeId);
+					HashMapVirtualObject ifcTypeObject = getByOid(relatingTypeId, true);
 					List<Long> propertySets = (List<Long>) ifcTypeObject.get("HasPropertySets");
 					if (propertySets != null) {
 						for (Long propertySetId : propertySets) {
@@ -638,7 +638,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 		Set<String> propertiesToIncludeAll = includeProperties.get("ALL");
 		EClass eClassForOid = databaseSession.getEClassForOid(ifcPropertySetDefinition);
 
-		HashMapVirtualObject ifcPropertySet = getByOid(ifcPropertySetDefinition);
+		HashMapVirtualObject ifcPropertySet = getByOid(ifcPropertySetDefinition, true);
 		if(ifcPropertySet.has("Name") == false) {
 			return;
 		}
@@ -674,7 +674,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 				continue;
 			}
 			
-			HashMapVirtualObject property = getByOid(propertyOid);
+			HashMapVirtualObject property = getByOid(propertyOid, true);
 			includePropertySingleValue(property, propertySetName, propertiesToInclude, propertiesToIncludeAll, includedProperties);
 		}
 	}
@@ -749,7 +749,7 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 				continue;
 			}
 
-			HashMapVirtualObject quantity = getByOid(quantityOid);
+			HashMapVirtualObject quantity = getByOid(quantityOid, true);
 			includeQuantity(quantity, quantitySetName, propertiesToInclude, propertiesToIncludeAll, includedProperties);
 		}
 	}
