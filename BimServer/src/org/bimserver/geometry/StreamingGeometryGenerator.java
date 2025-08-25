@@ -1023,15 +1023,14 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 		if (ifcAxis2Placement3D.getDirectFeature(packageMetaData.getEReference("IfcAxis2Placement3D", "Axis")) != null && ifcAxis2Placement3D.getDirectFeature(refDirectionFeature) != null) {
 			AbstractHashMapVirtualObject axis = ifcAxis2Placement3D.getDirectFeature(packageMetaData.getEReference("IfcAxis2Placement3D", "Axis"));
 			AbstractHashMapVirtualObject direction = ifcAxis2Placement3D.getDirectFeature(refDirectionFeature);
-			List<Double> axisDirectionRatios = (List<Double>) axis.get("DirectionRatios");
-			List<Double> directionDirectionRatios = (List<Double>) direction.get("DirectionRatios");
+			double[] axisDirectionRatios = convertAndNormalize((List<Double>) axis.get("DirectionRatios"));
+			double[] directionDirectionRatios = convertAndNormalize((List<Double>) direction.get("DirectionRatios"));
 			List<Double> locationCoordinates = (List<Double>) location.get("Coordinates");
-			double[] cross = Vector.crossProduct(new double[]{axisDirectionRatios.get(0), axisDirectionRatios.get(1), axisDirectionRatios.get(2), 1}, 
-					new double[]{directionDirectionRatios.get(0), directionDirectionRatios.get(1), directionDirectionRatios.get(2), 1});
+			double[] cross = Vector.crossProduct(axisDirectionRatios, directionDirectionRatios);
 			return new double[]{
-				directionDirectionRatios.get(0), directionDirectionRatios.get(1), directionDirectionRatios.get(2), 0,
+				directionDirectionRatios[0], directionDirectionRatios[1], directionDirectionRatios[2], 0,
 				cross[0], cross[1], cross[2], 0,
-				axisDirectionRatios.get(0), axisDirectionRatios.get(1), axisDirectionRatios.get(2), 0,
+				axisDirectionRatios[0], axisDirectionRatios[1], axisDirectionRatios[2], 0,
 				locationCoordinates.get(0), locationCoordinates.get(1), locationCoordinates.get(2), 1
 			};
 		} else if (location != null) {
@@ -1044,6 +1043,12 @@ public class StreamingGeometryGenerator extends GenericGeometryGenerator {
 			};
 		}
 		return Matrix.identity();
+	}
+	
+	private double[] convertAndNormalize(List<Double> vectorAsList) {
+		double[] vectorAsArray = {vectorAsList.get(0), vectorAsList.get(1), vectorAsList.get(2)};
+		Vector.normalize(vectorAsArray);
+		return vectorAsArray;
 	}
 	
 	private double[] placementToMatrix(AbstractHashMapVirtualObject placement) {
