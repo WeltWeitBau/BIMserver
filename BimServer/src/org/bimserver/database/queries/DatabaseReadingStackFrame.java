@@ -66,11 +66,36 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	protected HashMapVirtualObject currentObject;
 	private final QueryPart queryPart;
 	private boolean bWithPropertySetName = false;
+	private boolean trimAdditionalPropertyValues = true;
+	private boolean trimAdditionalPropertyNames = true;
 
 	public DatabaseReadingStackFrame(QueryContext reusable, QueryObjectProvider queryObjectProvider, QueryPart queryPart) {
 		this.reusable = reusable;
 		this.queryObjectProvider = queryObjectProvider;
 		this.queryPart = queryPart;
+		
+		readIncludePropertyOptions();
+	}
+	
+	private void readIncludePropertyOptions() {
+		if(!getQueryPart().hasIncludeProperties()) {
+			return;
+		}
+		
+		Map<String, Set<String>> includeProperties = getQueryPart().getIncludeProperties();
+		bWithPropertySetName = includeProperties.containsKey("_v");
+		
+		if(includeProperties.containsKey("_includePropertyOptions")) {
+			Set<String> options = includeProperties.get("_includePropertyOptions");
+			
+			if(options.contains("untrimmedValues")) {
+				trimAdditionalPropertyValues = false;
+			}
+			
+			if(options.contains("untrimmedKeys")) {
+				trimAdditionalPropertyNames = false;
+			}
+		}
 	}
 	
 	public QueryContext getReusable() {
@@ -634,7 +659,6 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	private void processPropertySet(DatabaseSession databaseSession, HashMap<String, Object> includedProperties,
 			Long ifcPropertySetDefinition) throws BimserverDatabaseException {
 		Map<String, Set<String>> includeProperties = getQueryPart().getIncludeProperties();
-		bWithPropertySetName = includeProperties.containsKey("_v");
 		Set<String> propertiesToIncludeAll = includeProperties.get("ALL");
 		EClass eClassForOid = databaseSession.getEClassForOid(ifcPropertySetDefinition);
 
@@ -693,6 +717,10 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			Set<String> propertiesToInclude, Set<String> propertiesToIncludeAll,
 			HashMap<String, Object> includedProperties) {
 		String name = (String) property.get("Name");
+		
+		if(trimAdditionalPropertyNames) {
+			name = name.trim();
+		}
 
 		if (propertiesToInclude.contains(name) == false) {
 			if(propertiesToIncludeAll == null || propertiesToIncludeAll.contains(name) == false) {
@@ -713,15 +741,24 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 			name = propertySetName + ":" + name;
 		}
 
+		includedProperties.put(name, getWrappedValue(value));
+	}
+	
+	private Object getWrappedValue(HashMapWrappedVirtualObject value) {
 		Object wrappedValue = value.eGet(value.eClass().getEStructuralFeature("wrappedValue"));
+		
 		if (matchesType(value.eClass(), "IfcBoolean")) {
 			Enumerator tristate = (Enumerator) wrappedValue;
-			includedProperties.put(name, tristate.getName().toLowerCase());
-		} else if(wrappedValue instanceof Number || wrappedValue instanceof Boolean) {
-			includedProperties.put(name, wrappedValue);
-		} else {
-			includedProperties.put(name, wrappedValue.toString());
+			wrappedValue = tristate.getName().toLowerCase().trim();
+		} else if(wrappedValue instanceof Number == false && wrappedValue instanceof Boolean == false) {
+			wrappedValue = wrappedValue.toString();
 		}
+		
+		if(trimAdditionalPropertyValues && wrappedValue instanceof String) {
+			return ((String) wrappedValue).trim();
+		}
+		
+		return wrappedValue;
 	}
 	
 	/**
