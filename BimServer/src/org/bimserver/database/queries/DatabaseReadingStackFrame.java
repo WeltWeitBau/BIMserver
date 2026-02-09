@@ -78,7 +78,8 @@ public abstract class DatabaseReadingStackFrame extends StackFrame implements Ob
 	}
 	
 	private void readIncludePropertyOptions() {
-		if(!getQueryPart().hasIncludeProperties()) {
+		QueryPart queryPart = getQueryPart();
+		if(queryPart == null || !queryPart.hasIncludeProperties()) {
 			return;
 		}
 		
