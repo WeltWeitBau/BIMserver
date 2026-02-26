@@ -112,13 +112,17 @@ public class BerkeleyKeyValueStore implements KeyValueStore {
 		}
 		envConfig.setAllowCreate(true);
 		envConfig.setTransactional(useTransactions);
-		envConfig.setTxnTimeout(10, TimeUnit.SECONDS);
+		
+		if(properties == null || !properties.containsKey(EnvironmentConfig.TXN_TIMEOUT)) {
+			envConfig.setTxnTimeout(10, TimeUnit.SECONDS);
+		}
 		
 		if(properties == null || !properties.containsKey(EnvironmentConfig.LOCK_TIMEOUT)) {
 			envConfig.setLockTimeout(2000, TimeUnit.MILLISECONDS);
 		}
 		
-		LOGGER.info("bdb timeout ms:" + envConfig.getLockTimeout(TimeUnit.MILLISECONDS));
+		LOGGER.info("bdb lock timeout ms:" + envConfig.getLockTimeout(TimeUnit.MILLISECONDS));
+		LOGGER.info("bdb txn timeout ms:" + envConfig.getTxnTimeout(TimeUnit.MILLISECONDS));
 		
 		envConfig.setConfigParam(EnvironmentConfig.CHECKPOINTER_HIGH_PRIORITY, "true");
 		envConfig.setConfigParam(EnvironmentConfig.CLEANER_THREADS, "5");
