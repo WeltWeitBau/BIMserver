@@ -60,6 +60,7 @@ import org.bimserver.shared.interfaces.RemoteServiceInterface;
 import org.bimserver.utils.GrowingByteBuffer;
 import org.bimserver.webservices.InvalidTokenException;
 import org.bimserver.webservices.ServiceMap;
+import org.eclipse.jetty.websocket.api.WebSocketException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,6 +190,18 @@ public class Streamer implements EndPoint {
 							} catch (IOException e) {
 								LOGGER.error("", e);
 								// Probably closed/F5-ed browser
+							} catch (WebSocketException e) {
+								LOGGER.error("", e);
+								
+								if(e.getMessage().contains("Session closed")) {
+									cleanupLongAction(topicId);
+								}
+							} catch (IllegalStateException e) {
+								LOGGER.error("", e);
+								
+								if(e.getMessage().contains("closed session")) {
+									cleanupLongAction(topicId);
+								}
 							} catch (SerializerException e) {
 								LOGGER.error("", e);
 							} finally {
@@ -253,6 +266,14 @@ public class Streamer implements EndPoint {
 			LOGGER.error("", e1);
 		} catch (IOException e1) {
 			LOGGER.error("", e1);
+		}
+	}
+	
+	private void cleanupLongAction(long topicId) {
+		try {
+			bimServer.getLongActionManager().remove(topicId);
+		} catch (Exception e) {
+			LOGGER.error("", e);
 		}
 	}
 
