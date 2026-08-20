@@ -126,7 +126,7 @@ public class StreamingCheckinDatabaseAction extends GenericCheckinDatabaseAction
 			getDatabaseSession().clearPostCommitActions();
 			
 			if (fileSize == -1) {
-//				setProgress("Deserializing IFC file...", -1);
+				setProgress("Deserializing IFC file...", -1);
 			} else {
 				setProgress("Deserializing IFC file...", 0);
 			}

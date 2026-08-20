@@ -154,7 +154,9 @@ public class UploadServlet extends SubServlet {
 											result = (ObjectNode) getBimServer().getJsonHandler().getJsonConverter().toJson(checkinSync);
 											service.cleanupLongAction(checkinSync.getTopicId());
 										} else {
-											service.checkinInitiatedAsync(topicId, poid, comment, deserializerOid, -1L, name, ifcFile, merge);
+											long lContentLength = request.getContentLengthLong();
+											
+											service.checkinInitiatedAsync(topicId, poid, comment, deserializerOid, lContentLength, name, ifcFile, merge);
 											triggerOnCloseInputStream.await();
 											result.put("topicId", topicId);
 										}
